@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Multi-Stream Dashboard</title>
   <style>
     :root {
@@ -14,6 +15,7 @@
       --border-color: #272a38;
       --accent-red: #ff334b;
       --accent-green: #2ecc71;
+      --accent-gold: #f59e0b;
       --text-main: #f1f2f6;
       --text-muted: #8b92a5;
     }
@@ -34,6 +36,83 @@
       overflow: hidden;
     }
 
+    /* Modal / Login Screen */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(8, 9, 12, 0.92);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-color);
+      width: 100%;
+      max-width: 380px;
+      padding: 30px 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      text-align: center;
+    }
+
+    .login-card h2 {
+      font-size: 1.35rem;
+      margin-bottom: 6px;
+      color: #fff;
+    }
+
+    .login-card p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .login-card input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      outline: none;
+      text-align: center;
+    }
+
+    .login-card input:focus {
+      border-color: #556285;
+    }
+
+    .login-btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--accent-red);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .login-btn:hover {
+      background: #e0243b;
+    }
+
+    .login-error {
+      color: var(--accent-red);
+      font-size: 0.8rem;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+
+    /* Top Bar */
     header {
       height: 56px;
       background-color: var(--bg-sidebar);
@@ -55,7 +134,7 @@
       gap: 8px;
     }
 
-    .brand-title span {
+    .badge-live {
       background: var(--accent-red);
       color: #fff;
       padding: 2px 7px;
@@ -64,11 +143,31 @@
       letter-spacing: 0.5px;
     }
 
+    .badge-role {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .role-admin {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--accent-gold);
+      border: 1px solid var(--accent-gold);
+    }
+
+    .role-user {
+      background: rgba(46, 204, 113, 0.2);
+      color: var(--accent-green);
+      border: 1px solid var(--accent-green);
+    }
+
     .custom-link-container {
       display: flex;
       align-items: center;
       gap: 8px;
-      max-width: 550px;
+      max-width: 500px;
       width: 100%;
     }
 
@@ -85,6 +184,12 @@
 
     .custom-link-container input:focus {
       border-color: #556285;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .btn {
@@ -115,14 +220,16 @@
       color: #fff;
     }
 
+    /* Main Container */
     .main-wrapper {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
 
+    /* Left Sidebar */
     aside {
-      width: 270px;
+      width: 290px;
       background: var(--bg-sidebar);
       border-right: 1px solid var(--border-color);
       display: flex;
@@ -142,6 +249,37 @@
       align-items: center;
     }
 
+    /* Admin Add Streamer Box */
+    .admin-form {
+      padding: 10px;
+      background: #181a24;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .admin-form input {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      outline: none;
+    }
+
+    .admin-form button {
+      background: var(--accent-gold);
+      color: #000;
+      font-weight: 600;
+      border: none;
+      padding: 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.78rem;
+    }
+
     .streamer-list {
       flex: 1;
       overflow-y: auto;
@@ -154,7 +292,7 @@
     .streamer-item {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       padding: 8px 10px;
       background: var(--bg-card);
       border: 1px solid transparent;
@@ -162,6 +300,7 @@
       cursor: pointer;
       user-select: none;
       transition: all 0.2s;
+      position: relative;
     }
 
     .streamer-item:hover {
@@ -175,8 +314,8 @@
     }
 
     .streamer-avatar {
-      width: 38px;
-      height: 38px;
+      width: 36px;
+      height: 36px;
       border-radius: 6px;
       object-fit: cover;
       background: #252836;
@@ -189,7 +328,7 @@
     }
 
     .streamer-name {
-      font-size: 0.88rem;
+      font-size: 0.85rem;
       font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
@@ -197,7 +336,7 @@
     }
 
     .streamer-status {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       display: flex;
       align-items: center;
       gap: 5px;
@@ -225,6 +364,31 @@
       color: var(--text-muted);
     }
 
+    /* Admin Delete Streamer Button */
+    .btn-delete-streamer {
+      display: none;
+      background: rgba(255, 51, 75, 0.2);
+      border: 1px solid var(--accent-red);
+      color: var(--accent-red);
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.75rem;
+      margin-left: 4px;
+    }
+
+    .btn-delete-streamer:hover {
+      background: var(--accent-red);
+      color: #fff;
+    }
+
+    .is-admin .btn-delete-streamer {
+      display: flex;
+    }
+
     .sidebar-footer {
       padding: 10px;
       border-top: 1px solid var(--border-color);
@@ -233,6 +397,7 @@
       gap: 6px;
     }
 
+    /* Grid Area */
     main {
       flex: 1;
       padding: 10px;
@@ -317,69 +482,174 @@
 </head>
 <body>
 
+  <!-- Overlay Login -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card">
+      <h2>MULTI-STREAM ACCESS</h2>
+      <p>Silakan masukkan password untuk melanjutkan.</p>
+      <input type="password" id="passwordInput" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter') verifyLogin()" />
+      <button class="login-btn" onclick="verifyLogin()">Masuk</button>
+      <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <!-- Header -->
   <header>
     <div class="brand-title">
-      MULTI-STREAM <span>LIVE</span>
+      MULTI-STREAM <span class="badge-live">LIVE</span>
+      <span id="roleBadge" class="badge-role"></span>
     </div>
 
+    <!-- Paste Custom Link -->
     <div class="custom-link-container">
-      <input type="text" id="customInput" placeholder="Paste link live (contoh: https://www.youtube.com/watch?v=... atau ID)" />
+      <input type="text" id="customInput" placeholder="Paste link live YouTube / Video ID..." />
       <button class="btn" onclick="handleCustomLink()">+ Add Stream</button>
     </div>
 
-    <div>
+    <div class="header-actions">
       <button class="btn btn-danger" onclick="clearAllStreams()">Clear Streams</button>
+      <button class="btn" onclick="logout()">Logout</button>
     </div>
   </header>
 
-  <div class="main-wrapper">
-    <aside>
+  <!-- Main Container -->
+  <div class="main-wrapper" id="mainWrapper">
+    <!-- Sidebar Kiri -->
+    <aside id="sidebarArea">
       <div class="sidebar-header">
         <span>Streamers</span>
         <button class="btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="checkAllStatus()">Refresh Live</button>
       </div>
+
+      <!-- Form Khusus Admin (Menambah Streamer Permanen) -->
+      <div class="admin-form" id="adminForm" style="display: none;">
+        <span style="font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);">+ Tambah Streamer Permanen</span>
+        <input type="text" id="newStreamerName" placeholder="Nama Streamer (Contoh: Sipije)" />
+        <input type="text" id="newStreamerHandle" placeholder="Handle YT tanpa @ (Contoh: sipijee)" />
+        <input type="text" id="newStreamerAvatar" placeholder="Link Foto Profil (Opsional)" />
+        <button onclick="addStreamerByAdmin()">Simpan Streamer</button>
+      </div>
+
+      <!-- Daftar Streamer -->
       <div class="streamer-list" id="streamerList"></div>
+
       <div class="sidebar-footer">
         <span style="font-size: 0.75rem; color: var(--text-muted); text-align: center;">Maksimal 8 Grid Stream</span>
       </div>
     </aside>
 
+    <!-- Area Video Grid -->
     <main id="gridContainer" class="grid-0">
       <div>Pilih YouTuber di panel kiri atau paste link live di bagian atas.</div>
     </main>
   </div>
 
   <script>
-    // Masukkan Channel ID resmi (UCxxxxxx) atau default video ID live mereka
-    const DEFAULT_STREAMERS = [
-      { id: "streamer_1", name: "Sipije", channelId: "UCgE3W677i8xJ8vV5e3L9f3Q", handle: "sipijee", avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop" },
-      { id: "streamer_2", name: "Risky Prabu", channelId: "", handle: "RiskyPrabu", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" },
-      { id: "streamer_3", name: "Dobori Tensha VT", channelId: "", handle: "DoboriTensha", avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&h=100&fit=crop" },
-      { id: "streamer_4", name: "Jaka Triad", channelId: "", handle: "JakaTriad", avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop" },
-      { id: "streamer_5", name: "Cocis ent", channelId: "", handle: "Cocisent", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop" },
-      { id: "streamer_6", name: "dipanggilcuno", channelId: "", handle: "dipanggilcuno", avatar: "https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=100&h=100&fit=crop" },
-      { id: "streamer_7", name: "Imed Mettu", channelId: "", handle: "ImedMettu", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" },
-      { id: "streamer_8", name: "Kevin Nugraha", channelId: "", handle: "KevinNugraha", avatar: "https://images.unsplash.com/photo-1624561172888-ac93c696e10c?w=100&h=100&fit=crop" },
-      { id: "streamer_9", name: "AangKa25", channelId: "", handle: "AangKa25", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" }
+    // List default awal jika localStorage masih kosong
+    const INITIAL_STREAMERS = [
+      { id: "str_1", name: "Sipije", handle: "sipijee", avatar: "https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&h=100&fit=crop" },
+      { id: "str_2", name: "Risky Prabu", handle: "RiskyPrabu", avatar: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop" },
+      { id: "str_3", name: "Dobori Tensha VT", handle: "DoboriTensha", avatar: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100&h=100&fit=crop" },
+      { id: "str_4", name: "Jaka Triad", handle: "JakaTriad", avatar: "https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop" },
+      { id: "str_5", name: "Cocis ent", handle: "Cocisent", avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop" },
+      { id: "str_6", name: "dipanggilcuno", handle: "dipanggilcuno", avatar: "https://images.unsplash.com/photo-1628157582853-a796fa650a6a?w=100&h=100&fit=crop" },
+      { id: "str_7", name: "Imed Mettu", handle: "ImedMettu", avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" },
+      { id: "str_8", name: "Kevin Nugraha", handle: "KevinNugraha", avatar: "https://images.unsplash.com/photo-1624561172888-ac93c696e10c?w=100&h=100&fit=crop" },
+      { id: "str_9", name: "AangKa25", handle: "AangKa25", avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop" }
     ];
 
+    // Load Streamers dari LocalStorage (Permanen)
+    let streamers = [];
+    function loadStreamers() {
+      const saved = localStorage.getItem("multi_streamers_list");
+      if (saved) {
+        try {
+          streamers = JSON.parse(saved);
+        } catch (e) {
+          streamers = INITIAL_STREAMERS;
+        }
+      } else {
+        streamers = INITIAL_STREAMERS;
+        localStorage.setItem("multi_streamers_list", JSON.stringify(streamers));
+      }
+    }
+
+    function saveStreamers() {
+      localStorage.setItem("multi_streamers_list", JSON.stringify(streamers));
+    }
+
+    // Role state: 'user' | 'admin' | null
+    let currentUserRole = null;
     const streamerLiveStatus = {};
+    const streamerLiveVideoId = {};
     let activeStreams = [];
 
+    // Verifikasi Login
+    function verifyLogin() {
+      const pass = document.getElementById("passwordInput").value.trim();
+      const err = document.getElementById("loginError");
+
+      if (pass === "opjterbaik") {
+        currentUserRole = "admin";
+      } else if (pass === "opjontop") {
+        currentUserRole = "user";
+      } else {
+        err.innerText = "Password salah!";
+        return;
+      }
+
+      // Login Sukses
+      sessionStorage.setItem("user_session_role", currentUserRole);
+      applyLoginState();
+    }
+
+    function applyLoginState() {
+      document.getElementById("loginOverlay").style.display = "none";
+      const roleBadge = document.getElementById("roleBadge");
+      const adminForm = document.getElementById("adminForm");
+      const sidebarArea = document.getElementById("sidebarArea");
+
+      if (currentUserRole === "admin") {
+        roleBadge.className = "badge-role role-admin";
+        roleBadge.innerText = "Admin";
+        adminForm.style.display = "flex";
+        sidebarArea.classList.add("is-admin");
+      } else {
+        roleBadge.className = "badge-role role-user";
+        roleBadge.innerText = "Member";
+        adminForm.style.display = "none";
+        sidebarArea.classList.remove("is-admin");
+      }
+
+      renderSidebar();
+      checkAllStatus();
+    }
+
+    function logout() {
+      sessionStorage.removeItem("user_session_role");
+      window.location.reload();
+    }
+
+    // Render Streamer Tab di Kiri
     function renderSidebar() {
       const listEl = document.getElementById("streamerList");
       listEl.innerHTML = "";
 
-      DEFAULT_STREAMERS.forEach(streamer => {
+      streamers.forEach(streamer => {
         const status = streamerLiveStatus[streamer.id] || "checking";
         const isActive = activeStreams.some(s => s.id === streamer.id);
 
         const card = document.createElement("div");
         card.className = `streamer-item ${isActive ? "active" : ""}`;
-        card.onclick = () => toggleStreamer(streamer);
+
+        // Klik streamer untuk buka/tutup di grid
+        card.onclick = (e) => {
+          if (e.target.classList.contains("btn-delete-streamer")) return;
+          toggleStreamer(streamer);
+        };
 
         card.innerHTML = `
-          <img src="${streamer.avatar}" alt="${streamer.name}" class="streamer-avatar" onerror="this.src='https://via.placeholder.com/40'" />
+          <img src="${streamer.avatar || 'https://via.placeholder.com/40'}" alt="${streamer.name}" class="streamer-avatar" onerror="this.src='https://via.placeholder.com/40'" />
           <div class="streamer-info">
             <div class="streamer-name">${streamer.name}</div>
             <div class="streamer-status ${status === 'live' ? 'live' : 'offline'}">
@@ -387,12 +657,65 @@
               <span>${status === 'live' ? 'Live' : (status === 'checking' ? 'Checking...' : 'Offline')}</span>
             </div>
           </div>
+          <button class="btn-delete-streamer" title="Hapus Streamer" onclick="deleteStreamerByAdmin('${streamer.id}', event)">✕</button>
         `;
 
         listEl.appendChild(card);
       });
     }
 
+    // Admin Tambah Streamer Permanen
+    function addStreamerByAdmin() {
+      if (currentUserRole !== "admin") return;
+
+      const nameInput = document.getElementById("newStreamerName");
+      const handleInput = document.getElementById("newStreamerHandle");
+      const avatarInput = document.getElementById("newStreamerAvatar");
+
+      const name = nameInput.value.trim();
+      let handle = handleInput.value.trim().replace(/^@/, "");
+      const avatar = avatarInput.value.trim() || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=252836&color=fff`;
+
+      if (!name || !handle) {
+        alert("Nama dan Handle YouTube wajib diisi!");
+        return;
+      }
+
+      const newId = "str_" + Date.now();
+      streamers.push({
+        id: newId,
+        name: name,
+        handle: handle,
+        avatar: avatar
+      });
+
+      saveStreamers();
+      nameInput.value = "";
+      handleInput.value = "";
+      avatarInput.value = "";
+
+      renderSidebar();
+      checkAllStatus();
+      alert(`Streamer ${name} berhasil ditambahkan permanen!`);
+    }
+
+    // Admin Hapus Streamer Permanen
+    function deleteStreamerByAdmin(streamerId, event) {
+      event.stopPropagation();
+      if (currentUserRole !== "admin") return;
+
+      const target = streamers.find(s => s.id === streamerId);
+      if (!confirm(`Yakin ingin menghapus permanent streamer "${target?.name}"?`)) return;
+
+      streamers = streamers.filter(s => s.id !== streamerId);
+      saveStreamers();
+
+      // Tutup jika sedang aktif di grid
+      removeStream(streamerId);
+      renderSidebar();
+    }
+
+    // Toggle Streamer Grid
     function toggleStreamer(streamer) {
       const existingIdx = activeStreams.findIndex(s => s.id === streamer.id);
 
@@ -404,24 +727,18 @@
           return;
         }
 
-        // Jika streamer memiliki videoId langsung atau Channel ID
-        let embedSrc = "";
-        if (streamer.videoId) {
-          embedSrc = `https://www.youtube.com/embed/${streamer.videoId}?autoplay=1`;
-        } else if (streamer.channelId) {
-          embedSrc = `https://www.youtube.com/embed/live_stream?channel=${streamer.channelId}&autoplay=1`;
-        } else {
-          // Fallback bila channel ID belum diisi: meminta link live aktif
-          const promptUrl = prompt(`Masukkan link live YouTube untuk ${streamer.name}:`);
-          if (!promptUrl) return;
-          embedSrc = extractEmbedUrl(promptUrl);
+        let vidId = streamerLiveVideoId[streamer.id];
+        if (!vidId) {
+          const input = prompt(`Streamer belum terdeteksi live otomatis.\nMasukkan Video ID atau Link Live untuk ${streamer.name}:`);
+          if (!input) return;
+          vidId = parseVideoId(input);
         }
 
-        if (embedSrc) {
+        if (vidId) {
           activeStreams.push({
             id: streamer.id,
             title: streamer.name,
-            embedUrl: embedSrc
+            videoId: vidId
           });
         }
       }
@@ -430,40 +747,26 @@
       renderGrid();
     }
 
-    function extractEmbedUrl(inputStr) {
-      if (!inputStr) return null;
-      const trimmed = inputStr.trim();
+    // Parse YouTube Link / Video ID
+    function parseVideoId(input) {
+      if (!input) return null;
+      const str = input.trim();
+      if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
 
-      // Jika format adalah 11 digit Video ID langsung
-      if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
-        return `https://www.youtube.com/embed/${trimmed}?autoplay=1`;
-      }
-
-      // Deteksi URL YouTube
       try {
-        const url = new URL(trimmed);
+        const url = new URL(str);
         if (url.hostname.includes("youtube.com")) {
-          if (url.searchParams.has("v")) {
-            return `https://www.youtube.com/embed/${url.searchParams.get("v")}?autoplay=1`;
-          }
-          if (url.pathname.includes("/live/")) {
-            const id = url.pathname.split("/live/")[1].split("/")[0].split("?")[0];
-            return `https://www.youtube.com/embed/${id}?autoplay=1`;
-          }
-          if (url.pathname.includes("/embed/")) {
-            return trimmed;
-          }
+          if (url.searchParams.has("v")) return url.searchParams.get("v");
+          if (url.pathname.includes("/live/")) return url.pathname.split("/live/")[1].split("/")[0].split("?")[0];
+          if (url.pathname.includes("/embed/")) return url.pathname.split("/embed/")[1].split("/")[0].split("?")[0];
         } else if (url.hostname === "youtu.be") {
-          const id = url.pathname.slice(1).split("?")[0];
-          return `https://www.youtube.com/embed/${id}?autoplay=1`;
+          return url.pathname.slice(1).split("?")[0];
         }
-      } catch (e) {
-        // Bukan format valid
-      }
-
+      } catch (e) {}
       return null;
     }
 
+    // Custom Link Handler
     function handleCustomLink() {
       const input = document.getElementById("customInput");
       const val = input.value.trim();
@@ -474,17 +777,16 @@
         return;
       }
 
-      const embedUrl = extractEmbedUrl(val);
-      if (!embedUrl) {
-        alert("Link YouTube tidak valid. Gunakan format: https://www.youtube.com/watch?v=... atau https://youtu.be/...");
+      const videoId = parseVideoId(val);
+      if (!videoId) {
+        alert("Link tidak dikenali! Masukkan link live YouTube yang valid.");
         return;
       }
 
-      const customId = "custom_" + Date.now();
       activeStreams.push({
-        id: customId,
+        id: "custom_" + Date.now(),
         title: "Live Stream (" + (activeStreams.length + 1) + ")",
-        embedUrl: embedUrl
+        videoId: videoId
       });
 
       input.value = "";
@@ -504,6 +806,7 @@
       renderGrid();
     }
 
+    // Render Grid Video
     function renderGrid() {
       const grid = document.getElementById("gridContainer");
       const count = activeStreams.length;
@@ -516,7 +819,12 @@
       }
 
       grid.innerHTML = "";
+      const originParam = window.location.origin && window.location.origin !== "null" 
+        ? `&origin=${encodeURIComponent(window.location.origin)}` 
+        : "";
+
       activeStreams.forEach(stream => {
+        const embedUrl = `https://www.youtube-nocookie.com/embed/${stream.videoId}?autoplay=1&enablejsapi=1${originParam}`;
         const card = document.createElement("div");
         card.className = "video-card";
         card.innerHTML = `
@@ -525,8 +833,9 @@
             <button class="btn-close" onclick="removeStream('${stream.id}')" title="Close">✕</button>
           </div>
           <iframe 
-            src="${stream.embedUrl}" 
+            src="${embedUrl}" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            referrerpolicy="strict-origin-when-cross-origin"
             allowfullscreen>
           </iframe>
         `;
@@ -534,8 +843,9 @@
       });
     }
 
+    // Status Live Checker
     async function checkAllStatus() {
-      DEFAULT_STREAMERS.forEach(async (streamer) => {
+      streamers.forEach(async (streamer) => {
         streamerLiveStatus[streamer.id] = "checking";
         renderSidebar();
 
@@ -546,7 +856,15 @@
           if (response.ok) {
             const html = await response.text();
             const isLive = html.includes('"isLive":true') || (html.includes('isLiveBroadcast') && !html.includes('LIVE_STREAM_OFFLINE'));
-            streamerLiveStatus[streamer.id] = isLive ? "live" : "offline";
+            if (isLive) {
+              streamerLiveStatus[streamer.id] = "live";
+              const match = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
+              if (match && match[1]) {
+                streamerLiveVideoId[streamer.id] = match[1];
+              }
+            } else {
+              streamerLiveStatus[streamer.id] = "offline";
+            }
           } else {
             streamerLiveStatus[streamer.id] = "offline";
           }
@@ -557,8 +875,13 @@
       });
     }
 
-    renderSidebar();
-    checkAllStatus();
+    // Inisialisasi awal saat halaman dibuka
+    loadStreamers();
+    const existingSession = sessionStorage.getItem("user_session_role");
+    if (existingSession === "admin" || existingSession === "user") {
+      currentUserRole = existingSession;
+      applyLoginState();
+    }
   </script>
 </body>
 </html>
