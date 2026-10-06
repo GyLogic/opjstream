@@ -553,6 +553,13 @@
       .video-card { min-height: 0; }
       .login-card { max-height: 94dvh; overflow-y: auto; padding: 16px; }
     }
+    .search-box { position: relative; padding: 0 10px 8px; }
+    .search-box input { width: 100%; background: var(--bg-card); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; padding: 8px 30px 8px 10px; font-size: 0.82rem; outline: none; }
+    .search-box input:focus { border-color: #556285; }
+    .search-box button { position: absolute; right: 16px; top: 50%; transform: translateY(-62%); display: none; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95rem; }
+    .grp-tag { color: var(--text-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .dup-tag { background: rgba(245, 158, 11, 0.18); color: var(--accent-gold); border: 1px solid var(--accent-gold); border-radius: 3px; padding: 0 5px; font-size: 0.62rem; font-weight: 700; white-space: nowrap; }
+    @media (max-width: 768px) { .search-box input { font-size: 16px; padding: 10px 32px 10px 10px; } .search-box button { font-size: 1.1rem; } }
   </style>
 </head>
 <body>
@@ -619,6 +626,10 @@
       </div>
 
       <div id="tabs" class="tabs"></div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Cari nama streamer..." oninput="onSearch(this.value)" autocomplete="off" />
+        <button id="searchClear" onclick="clearSearch()" title="Hapus pencarian">✕</button>
+      </div>
       <div class="group-actions admin-only">
         <button class="btn" onclick="addGroup()">+ Grup</button>
         <button class="btn" onclick="renameGroup()">Ubah Nama</button>
@@ -675,6 +686,7 @@
     const $ = id => document.getElementById(id);
     const isAdmin = () => role === "admin";
     const chanOf = s => s.channelId || chanCache[s.id] || null;
+    let searchQ = "";
     const gidsOf = s => s.groupIds || (s.group ? [s.group] : []);   // 1 YouTuber bisa di banyak kelompok
     const avatarFor = n => `https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&background=252836&color=fff`;
     const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -761,7 +773,10 @@
     }
 
     // ---------- Kelompok ----------
-    function selectGroup(id) { currentGroup = id; $("adminForm").style.display = "none"; render(); }
+    function onSearch(v) { searchQ = v; $("searchClear").style.display = v ? "block" : "none"; render(); }
+    function clearSearch() { $("searchInput").value = ""; onSearch(""); $("searchInput").focus(); }
+
+    function selectGroup(id) { currentGroup = id; searchQ = ""; $("searchInput").value = ""; $("searchClear").style.display = "none"; $("adminForm").style.display = "none"; render(); }
 
     async function addGroup() {
       if (!isAdmin()) return;
@@ -830,10 +845,47 @@
       return { handle, channelId, staticVideoId };
     }
 
+    // Identitas YouTuber: handle (@username, tanpa @ & huruf besar/kecil) dan channel ID
+    const norm = h => String(h || "").replace(/^@/, "").trim().toLowerCase();
+    const keysOf = s => {
+      const k = [];
+      if (s.handle) k.push("h:" + norm(s.handle));
+      const c = s.channelId || chanCache[s.id];
+      if (c) k.push("c:" + c);
+      return k;
+    };
+    const groupNames = s => gidsOf(s).map(id => (groups.find(g => g.id === id) || {}).name).filter(Boolean).join(", ");
+
     function findDuplicate(p, exceptId) {
-      return streamers.find(x => x.id !== exceptId &&
-        ((p.handle && x.handle && x.handle.toLowerCase() === p.handle.toLowerCase()) ||
-         (p.channelId && x.channelId === p.channelId)));
+      const pk = [];
+      if (p.handle) pk.push("h:" + norm(p.handle));
+      if (p.channelId) pk.push("c:" + p.channelId);
+      if (!pk.length) return null;
+      return streamers.find(x => x.id !== exceptId && keysOf(x).some(k => pk.includes(k))) || null;
+    }
+
+    // Daftar YouTuber yang sudah terlanjur ganda: { id: [nama lain, ...] }
+    function dupMap() {
+      const m = {};
+      streamers.forEach(a => streamers.forEach(b => {
+        if (a.id !== b.id && keysOf(a).some(k => keysOf(b).includes(k))) (m[a.id] = m[a.id] || []).push(b.name);
+      }));
+      return m;
+    }
+
+    // Sudah ada: kalau belum ada di kelompok ini, tawarkan memasukkannya ke kelompok ini juga
+    async function handleDuplicate(dup) {
+      const cur = groups.find(g => g.id === currentGroup);
+      if (gidsOf(dup).includes(currentGroup)) { alert(`"${dup.name}" sudah ada di kelompok "${cur.name}".`); return; }
+      if (!confirm(`"${dup.name}" sudah terdaftar di kelompok: ${groupNames(dup)}.\nMasukkan juga ke kelompok "${cur.name}"?`)) return;
+      try {
+        await db.collection("streamers").doc(dup.id).update({
+          groupIds: gidsOf(dup).concat(currentGroup),
+          group: firebase.firestore.FieldValue.delete()
+        });
+        ["newStreamerName", "newStreamerHandle", "newStreamerAvatar"].forEach(i => $(i).value = "");
+        $("adminForm").style.display = "none";
+      } catch (e) { alert("Gagal menyimpan: " + e.message); }
     }
 
     async function addStreamer() {
@@ -843,7 +895,7 @@
       if (!inputVal) { alert("Handle / Link channel wajib diisi!"); return; }
       const p = parseHandleInput(inputVal);
       const dup = findDuplicate(p);
-      if (dup) { alert(`"${dup.name}" sudah terdaftar. Untuk memasukkannya ke kelompok lain, klik tombol ✎ pada namanya.`); return; }
+      if (dup) { await handleDuplicate(dup); return; }
       if (!name) name = p.handle || p.channelId || "YouTuber";
       const avatar = $("newStreamerAvatar").value.trim() || avatarFor(name);
       try {
@@ -892,7 +944,7 @@
         if (!input) { alert("Handle / Link channel wajib diisi!"); return; }
         const p = parseHandleInput(input);
         const dup = findDuplicate(p, st.id);
-        if (dup) { alert(`"${dup.name}" sudah memakai handle / channel tersebut.`); return; }
+        if (dup) { alert(`"${dup.name}" sudah memakai handle / channel tersebut (kelompok: ${groupNames(dup)}).`); return; }
         Object.assign(data, p);
         delete chanCache[st.id];
         delete lastCheck[st.id];   // paksa cek ulang status live
@@ -996,9 +1048,13 @@
       if (!groups.length) { listEl.innerHTML = `<div class="list-empty">${isAdmin() ? "Belum ada kelompok. Klik + Grup." : "Belum ada data."}</div>`; return; }
 
       // Yang sedang LIVE dinaikkan ke paling atas
-      const list = streamers.filter(s => gidsOf(s).includes(currentGroup)).sort((a, b) =>
+      const q = norm(searchQ);
+      const list = streamers.filter(s => q ? (norm(s.name).includes(q) || norm(s.handle).includes(q)) : gidsOf(s).includes(currentGroup)).sort((a, b) =>
         (liveStatus[b.id] === "live") - (liveStatus[a.id] === "live") || a.createdAt - b.createdAt);
-      if (!list.length) listEl.innerHTML = `<div class="list-empty">Belum ada YouTuber di kelompok ini.</div>`;
+      if (!list.length) listEl.innerHTML = `<div class="list-empty">${q ? `Tidak ada streamer dengan nama "${esc(searchQ.trim())}".` : "Belum ada YouTuber di kelompok ini."}</div>`;
+      const dups = isAdmin() ? dupMap() : {};
+      if (Object.keys(dups).length) listEl.insertAdjacentHTML("afterbegin", `<div class="list-empty" style="color: var(--accent-gold); padding: 4px 6px;">⚠ ${Object.keys(dups).length} YouTuber ganda terdeteksi (tanda "Ganda"). Hapus salah satunya.</div>`);
+      if (q) listEl.insertAdjacentHTML("afterbegin", `<div class="list-empty" style="padding: 2px 6px;">Hasil pencarian di semua kelompok</div>`);
 
       list.forEach(st => {
         const status = liveStatus[st.id] || "checking";
@@ -1015,7 +1071,7 @@
           <img src="${esc(st.avatar || avatarFor(st.name))}" alt="${esc(st.name)}" class="streamer-avatar" onerror="this.src='${avatarFor(st.name)}'" />
           <div class="streamer-info">
             <div class="streamer-name">${esc(st.name)}</div>
-            <div class="streamer-status ${status === "live" ? "live" : ""}">${statusHtml}</div>
+            <div class="streamer-status ${status === "live" ? "live" : ""}">${statusHtml}${q ? `<span class="grp-tag">· ${esc(groupNames(st))}</span>` : ""}${dups[st.id] ? `<span class="dup-tag" title="Sama dengan: ${esc(dups[st.id].join(", "))}">⚠ Ganda</span>` : ""}</div>
           </div>
           ${isAdmin() ? `<button class="btn-edit-streamer" title="Edit YouTuber">✎</button><button class="btn-delete-streamer" title="Hapus YouTuber">✕</button>` : ""}`;
         const ed = card.querySelector(".btn-edit-streamer");
