@@ -560,6 +560,12 @@
     .grp-tag { color: var(--text-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .dup-tag { background: rgba(245, 158, 11, 0.18); color: var(--accent-gold); border: 1px solid var(--accent-gold); border-radius: 3px; padding: 0 5px; font-size: 0.62rem; font-weight: 700; white-space: nowrap; }
     @media (max-width: 768px) { .search-box input { font-size: 16px; padding: 10px 32px 10px 10px; } .search-box button { font-size: 1.1rem; } }
+  
+    /* ---- TikTok ---- */
+    .plat-tag { font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-left: 6px; vertical-align: middle; background: #25f4ee; color: #000; }
+    .plat-select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border, #333); background: #0f111a; color: inherit; font-family: inherit; }
+    .btn-ext { color: inherit; text-decoration: none; font-size: 0.75rem; padding: 2px 8px; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; margin-right: 6px; }
+    .btn-ext:hover { background: rgba(255,255,255,.12); }
   </style>
 </head>
 <body>
@@ -578,9 +584,11 @@
   <!-- Modal Edit YouTuber (admin) -->
   <div class="login-overlay" id="editOverlay" style="display: none;">
     <div class="login-card edit-card">
-      <h2 style="margin-bottom: 14px;">Edit YouTuber</h2>
+      <h2 style="margin-bottom: 14px;">Edit Streamer</h2>
       <label class="f">Nama</label>
       <input type="text" id="editName" />
+      <label class="f">Platform</label>
+      <select id="editPlatform" class="plat-select"><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select>
       <label class="f">Handle (@nama) / Link Channel / Link Live</label>
       <input type="text" id="editHandle" />
       <label class="f">Link Foto Profil</label>
@@ -603,7 +611,7 @@
 
     <!-- Paste Custom Link -->
     <div class="custom-link-container">
-      <input type="text" id="customInput" placeholder="Paste link live YouTube / Video ID..." />
+      <input type="text" id="customInput" placeholder="Paste link live YouTube / Video ID / link TikTok (@user)..." />
       <button class="btn" onclick="handleCustomLink()">+ Add Stream</button>
     </div>
 
@@ -636,13 +644,14 @@
         <button class="btn btn-danger" onclick="deleteGroup()">Hapus Grup</button>
       </div>
 
-      <button class="btn-add-toggle admin-only" id="addToggle" onclick="toggleAddForm()">+ Tambah YouTuber</button>
+      <button class="btn-add-toggle admin-only" id="addToggle" onclick="toggleAddForm()">+ Tambah Streamer</button>
       <div class="admin-form" id="adminForm" style="display: none; margin-top: 10px;">
         <span id="addTarget" style="font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);"></span>
-        <input type="text" id="newStreamerName" placeholder="Nama YouTuber (opsional)" />
-        <input type="text" id="newStreamerHandle" placeholder="Handle (@nama) / Link Channel / Link Live" onkeydown="if(event.key==='Enter') addStreamer()" />
+        <select id="newStreamerPlatform" class="plat-select"><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select>
+        <input type="text" id="newStreamerName" placeholder="Nama streamer (opsional)" />
+        <input type="text" id="newStreamerHandle" placeholder="YouTube: @handle / link  |  TikTok: @username / link" onkeydown="if(event.key==='Enter') addStreamer()" />
         <input type="text" id="newStreamerAvatar" placeholder="Link Foto Profil (opsional)" />
-        <button onclick="addStreamer()">Simpan YouTuber</button>
+        <button onclick="addStreamer()">Simpan Streamer</button>
       </div>
 
       <div class="streamer-list" id="streamerList"></div>
@@ -827,7 +836,16 @@
       if (f.style.display === "flex") $("newStreamerHandle").focus();
     }
 
-    function parseHandleInput(inputVal) {
+    function parseTikTokInput(v) {
+      let m = v.match(/tiktok\.com\/@?([\w.]+)/i);
+      let u = m ? m[1] : v.replace(/^@/, "").split(/[\/?#\s]/)[0];
+      return u.replace(/[^\w.]/g, "");
+    }
+
+    function parseHandleInput(inputVal, platform) {
+      if (platform === "tiktok" || /tiktok\.com/i.test(inputVal)) {
+        return { platform: "tiktok", handle: parseTikTokInput(inputVal), channelId: null, staticVideoId: null };
+      }
       let handle = "", staticVideoId = null;
       const vid = extractVideoId(inputVal);
       if (vid && /youtu\.?be/.test(inputVal)) staticVideoId = vid;
@@ -842,14 +860,15 @@
       } else if (!channelId && !staticVideoId) {
         handle = inputVal.replace(/\s+/g, "");
       }
-      return { handle, channelId, staticVideoId };
+      return { platform: "youtube", handle, channelId, staticVideoId };
     }
 
     // Identitas YouTuber: handle (@username, tanpa @ & huruf besar/kecil) dan channel ID
     const norm = h => String(h || "").replace(/^@/, "").trim().toLowerCase();
     const keysOf = s => {
       const k = [];
-      if (s.handle) k.push("h:" + norm(s.handle));
+      const pf = s.platform === "tiktok" ? "t:" : "h:";
+      if (s.handle) k.push(pf + norm(s.handle));
       const c = s.channelId || chanCache[s.id];
       if (c) k.push("c:" + c);
       return k;
@@ -858,7 +877,7 @@
 
     function findDuplicate(p, exceptId) {
       const pk = [];
-      if (p.handle) pk.push("h:" + norm(p.handle));
+      if (p.handle) pk.push((p.platform === "tiktok" ? "t:" : "h:") + norm(p.handle));
       if (p.channelId) pk.push("c:" + p.channelId);
       if (!pk.length) return null;
       return streamers.find(x => x.id !== exceptId && keysOf(x).some(k => pk.includes(k))) || null;
@@ -893,10 +912,10 @@
       let name = $("newStreamerName").value.trim();
       const inputVal = $("newStreamerHandle").value.trim();
       if (!inputVal) { alert("Handle / Link channel wajib diisi!"); return; }
-      const p = parseHandleInput(inputVal);
+      const p = parseHandleInput(inputVal, $("newStreamerPlatform").value);
       const dup = findDuplicate(p);
       if (dup) { await handleDuplicate(dup); return; }
-      if (!name) name = p.handle || p.channelId || "YouTuber";
+      if (!name) name = p.handle || p.channelId || "Streamer";
       const avatar = $("newStreamerAvatar").value.trim() || avatarFor(name);
       try {
         await db.collection("streamers").add({ ...p, name, avatar, groupIds: [currentGroup], createdAt: Date.now() });
@@ -912,6 +931,8 @@
       const st = streamers.find(s => s.id === id);
       if (!isAdmin() || !st) return;
       editingId = id;
+      $("editPlatform").value = st.platform === "tiktok" ? "tiktok" : "youtube";
+      $("editPlatform").dataset.orig = $("editPlatform").value;
       const shown = st.handle ? "@" + st.handle : (st.channelId || (st.staticVideoId ? "https://youtu.be/" + st.staticVideoId : ""));
       $("editName").value = st.name;
       $("editHandle").value = shown;
@@ -940,13 +961,15 @@
         group: firebase.firestore.FieldValue.delete()
       };
       const input = $("editHandle").value.trim();
-      if (input !== $("editHandle").dataset.orig) {
+      const platChanged = $("editPlatform").value !== $("editPlatform").dataset.orig;
+      if (input !== $("editHandle").dataset.orig || platChanged) {
         if (!input) { alert("Handle / Link channel wajib diisi!"); return; }
-        const p = parseHandleInput(input);
+        const p = parseHandleInput(input, $("editPlatform").value);
         const dup = findDuplicate(p, st.id);
         if (dup) { alert(`"${dup.name}" sudah memakai handle / channel tersebut (kelompok: ${groupNames(dup)}).`); return; }
         Object.assign(data, p);
         delete chanCache[st.id];
+        delete liveVideo[st.id];
         delete lastCheck[st.id];   // paksa cek ulang status live
       }
       try {
@@ -996,6 +1019,13 @@
     }
 
     async function fetchLiveInfo(st) {
+      if (st.platform === "tiktok") {
+        try {
+          const resp = await fetchWithTimeout(`/api/live?platform=tiktok&handle=${encodeURIComponent(st.handle)}`, { timeout: 9000 });
+          if (resp.ok) return await resp.json();
+        } catch (e) {}
+        return { platform: "tiktok", isLive: null };
+      }
       const ch = chanOf(st);
       if (!st.handle && !ch) return null;
       try {
@@ -1013,6 +1043,11 @@
       let data = null;
       try { data = await withDeadline(fetchLiveInfo(st), 14000); } catch (e) {}
       lastCheck[st.id] = Date.now();
+      if (st.platform === "tiktok") {
+        // isLive true / false / null (tidak pasti: TikTok tidak punya API status live resmi)
+        liveStatus[st.id] = data && data.isLive === true ? "live" : data && data.isLive === false ? "ready" : "unknown";
+        return;
+      }
       if (data && data.channelId && !chanOf(st)) {
         chanCache[st.id] = data.channelId;
         if (isAdmin()) db.collection("streamers").doc(st.id).update({ channelId: data.channelId }).catch(() => {});
@@ -1051,7 +1086,7 @@
       const q = norm(searchQ);
       const list = streamers.filter(s => q ? (norm(s.name).includes(q) || norm(s.handle).includes(q)) : gidsOf(s).includes(currentGroup)).sort((a, b) =>
         (liveStatus[b.id] === "live") - (liveStatus[a.id] === "live") || a.createdAt - b.createdAt);
-      if (!list.length) listEl.innerHTML = `<div class="list-empty">${q ? `Tidak ada streamer dengan nama "${esc(searchQ.trim())}".` : "Belum ada YouTuber di kelompok ini."}</div>`;
+      if (!list.length) listEl.innerHTML = `<div class="list-empty">${q ? `Tidak ada streamer dengan nama "${esc(searchQ.trim())}".` : "Belum ada streamer di kelompok ini."}</div>`;
       const dups = isAdmin() ? dupMap() : {};
       if (Object.keys(dups).length) listEl.insertAdjacentHTML("afterbegin", `<div class="list-empty" style="color: var(--accent-gold); padding: 4px 6px;">⚠ ${Object.keys(dups).length} YouTuber ganda terdeteksi (tanda "Ganda"). Hapus salah satunya.</div>`);
       if (q) listEl.insertAdjacentHTML("afterbegin", `<div class="list-empty" style="padding: 2px 6px;">Hasil pencarian di semua kelompok</div>`);
@@ -1065,15 +1100,16 @@
 
         let statusHtml = `<span class="status-dot"></span><span>Offline</span>`;
         if (status === "live") statusHtml = `<span class="live-pill">LIVE</span><span>Sedang live</span>`;
+        else if (status === "unknown") statusHtml = `<span class="status-dot"></span><span>TikTok · klik untuk tonton</span>`;
         else if (status === "checking") statusHtml = `<span class="status-dot"></span><span>Mengecek...</span>`;
 
         card.innerHTML = `
           <img src="${esc(st.avatar || avatarFor(st.name))}" alt="${esc(st.name)}" class="streamer-avatar" onerror="this.src='${avatarFor(st.name)}'" />
           <div class="streamer-info">
-            <div class="streamer-name">${esc(st.name)}</div>
+            <div class="streamer-name">${esc(st.name)}${st.platform === "tiktok" ? '<span class="plat-tag">TikTok</span>' : ""}</div>
             <div class="streamer-status ${status === "live" ? "live" : ""}">${statusHtml}${q ? `<span class="grp-tag">· ${esc(groupNames(st))}</span>` : ""}${dups[st.id] ? `<span class="dup-tag" title="Sama dengan: ${esc(dups[st.id].join(", "))}">⚠ Ganda</span>` : ""}</div>
           </div>
-          ${isAdmin() ? `<button class="btn-edit-streamer" title="Edit YouTuber">✎</button><button class="btn-delete-streamer" title="Hapus YouTuber">✕</button>` : ""}`;
+          ${isAdmin() ? `<button class="btn-edit-streamer" title="Edit Streamer">✎</button><button class="btn-delete-streamer" title="Hapus Streamer">✕</button>` : ""}`;
         const ed = card.querySelector(".btn-edit-streamer");
         if (ed) ed.onclick = ev => { ev.stopPropagation(); openEdit(st.id); };
         const del = card.querySelector(".btn-delete-streamer");
@@ -1087,6 +1123,13 @@
       const idx = activeStreams.findIndex(s => s.id === st.id);
       if (idx !== -1) { activeStreams.splice(idx, 1); render(); renderGrid(); return; }
       if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
+
+      if (st.platform === "tiktok") {
+        activeStreams.push({ id: st.id, title: st.name, platform: "tiktok", handle: st.handle });
+        render();
+        renderGrid();
+        return;
+      }
 
       const fresh = lastCheck[st.id] && Date.now() - lastCheck[st.id] < 60000;
       if (!chanOf(st) && !(fresh && liveVideo[st.id])) {
@@ -1134,8 +1177,17 @@
       const val = input.value.trim();
       if (!val) return;
       if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
+      if (/tiktok\.com/i.test(val)) {
+        const u = parseTikTokInput(val);
+        if (!u) { alert("Link TikTok tidak dikenali! Contoh: https://www.tiktok.com/@username/live"); return; }
+        activeStreams.push({ id: "custom_tt_" + Date.now(), title: "TikTok @" + u, platform: "tiktok", handle: u });
+        input.value = "";
+        render();
+        renderGrid();
+        return;
+      }
       const videoId = extractVideoId(val);
-      if (!videoId) { alert("Link tidak dikenali! Masukkan link live YouTube yang valid."); return; }
+      if (!videoId) { alert("Link tidak dikenali! Masukkan link live YouTube / TikTok yang valid."); return; }
       activeStreams.push({ id: "custom_" + Date.now(), title: "Live Stream (" + (activeStreams.length + 1) + ")", videoId });
       input.value = "";
       render();
@@ -1174,6 +1226,7 @@
         card.innerHTML = `
           <div class="video-card-header">
             <span class="video-title">${esc(stream.title)}</span>
+            ${stream.platform === "tiktok" ? `<a class="btn-ext" href="https://www.tiktok.com/@${encodeURIComponent(stream.handle)}/live" target="_blank" rel="noopener" title="Buka di TikTok">TikTok ↗</a>` : ""}
             <button class="btn-close" onclick="removeStream('${stream.id}')" title="Close">✕</button>
           </div>`;
         grid.appendChild(card);
@@ -1187,6 +1240,15 @@
       if (!s || !card) return;
       const old = card.querySelector("iframe");
       if (old) old.remove();
+      if (s.platform === "tiktok") {
+        const tt = document.createElement("iframe");
+        tt.src = `https://www.tiktok.com/embed/live/@${encodeURIComponent(s.handle)}?autoplay=1&muted=1&controls=1&embed_domain=${encodeURIComponent(location.hostname)}`;
+        tt.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
+        tt.referrerPolicy = "strict-origin-when-cross-origin";
+        tt.allowFullscreen = true;
+        card.appendChild(tt);
+        return;   // TikTok tidak memakai YT.Player / auto-recover
+      }
       const base = s.videoId
         ? `https://www.youtube.com/embed/${s.videoId}?`
         : `https://www.youtube.com/embed/live_stream?channel=${s.channelId}&`;
