@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#13141a" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Multi-Stream Dashboard</title>
   <style>
@@ -31,6 +32,7 @@
       background-color: var(--bg-main);
       color: var(--text-main);
       height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -489,6 +491,68 @@
     .edit-groups label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 4px 0; cursor: pointer; }
     .edit-actions { display: flex; gap: 8px; }
     .edit-actions .btn { flex: 1; }
+
+    .sidebar-toggle { display: none; }
+
+    /* ===== HP (portrait): video di atas, panel streamer di bawah ===== */
+    @media (max-width: 768px) {
+      header { height: auto; flex-wrap: wrap; padding: 8px 10px; gap: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
+      .brand-title { font-size: 1rem; order: 1; flex-wrap: wrap; }
+      .header-actions { order: 2; margin-left: auto; gap: 6px; }
+      .custom-link-container { order: 3; max-width: none; flex: 1 1 100%; }
+      .btn { padding: 9px 12px; font-size: 0.82rem; }
+      .custom-link-container input, .admin-form input, .login-card input { font-size: 16px; }  /* cegah auto-zoom iOS */
+      .custom-link-container input { padding: 9px 12px; }
+
+      .main-wrapper { flex-direction: column-reverse; }
+      aside { width: 100%; height: 42dvh; border-right: none; border-top: 1px solid var(--border-color); overflow-y: auto; padding-bottom: env(safe-area-inset-bottom); }
+      aside.collapsed { height: auto; overflow: hidden; }
+      aside.collapsed > *:not(.sidebar-header) { display: none !important; }
+      .sidebar-header { position: sticky; top: 0; background: var(--bg-sidebar); z-index: 5; }
+      .sidebar-header .btn { padding: 6px 12px !important; font-size: 0.78rem !important; }
+      .sidebar-toggle { display: inline-block; }
+
+      .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tab { flex-shrink: 0; padding: 8px 14px; font-size: 0.85rem; }
+      .group-actions { overflow-x: auto; }
+      .group-actions .btn { padding: 7px 12px; font-size: 0.78rem; flex-shrink: 0; }
+      .btn-add-toggle { padding: 10px; font-size: 0.85rem; }
+      .admin-form input { padding: 10px; }
+      .admin-form button { padding: 10px; font-size: 0.9rem; }
+
+      .streamer-list { flex: none; overflow: visible; }
+      .streamer-item { padding: 10px; }
+      .streamer-avatar { width: 40px; height: 40px; }
+      .streamer-name { font-size: 0.95rem; }
+      .streamer-status { font-size: 0.78rem; }
+      .btn-edit-streamer, .btn-delete-streamer { width: 34px; height: 34px; font-size: 0.9rem; margin-left: 6px; }
+      .sidebar-footer { display: none; }
+
+      /* Video ditumpuk ke bawah, masing-masing 16:9 selebar layar */
+      #gridContainer { padding: 8px; gap: 8px; grid-template-columns: 1fr; grid-template-rows: none; grid-auto-rows: auto; align-content: start; }
+      #gridContainer.grid-0 { display: flex; height: auto; min-height: 110px; text-align: center; font-size: 0.9rem; padding: 20px; }
+      .video-card { aspect-ratio: 16 / 9; min-height: 0; }
+      .video-title { font-size: 0.78rem; }
+      .video-card-header .btn-close { width: 32px; height: 32px; font-size: 0.9rem; }
+
+      .login-overlay { padding: 12px; }
+      .login-card { padding: 24px 18px; }
+      .edit-card { max-height: 92dvh; }
+    }
+
+    /* ===== HP landscape: tata letak desktop yang dipadatkan ===== */
+    @media (max-height: 520px) and (orientation: landscape) {
+      header { height: 44px; padding: 0 10px; gap: 8px; }
+      .brand-title { font-size: 0.9rem; }
+      .custom-link-container { max-width: 300px; }
+      .custom-link-container input { padding: 5px 10px; font-size: 0.8rem; }
+      .btn { padding: 5px 10px; font-size: 0.78rem; }
+      aside { width: 230px; }
+      #gridContainer { padding: 6px; gap: 6px; }
+      .video-card { min-height: 0; }
+      .login-card { max-height: 94dvh; overflow-y: auto; padding: 16px; }
+    }
   </style>
 </head>
 <body>
@@ -548,7 +612,10 @@
     <aside id="sidebarArea">
       <div class="sidebar-header">
         <span>Streamers</span>
-        <button class="btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="checkAll()">Check Live</button>
+        <span style="display:flex; gap:6px; align-items:center;">
+          <button class="btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="checkAll()">Check Live</button>
+          <button class="btn sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">▾ Tutup</button>
+        </span>
       </div>
 
       <div id="tabs" class="tabs"></div>
@@ -611,6 +678,12 @@
     const gidsOf = s => s.groupIds || (s.group ? [s.group] : []);   // 1 YouTuber bisa di banyak kelompok
     const avatarFor = n => `https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&background=252836&color=fff`;
     const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    function toggleSidebar() {
+      const aside = $("sidebarArea");
+      const closed = aside.classList.toggle("collapsed");
+      $("sidebarToggle").textContent = closed ? "▴ Buka" : "▾ Tutup";
+    }
 
     // ---------- Login ----------
     async function verifyLogin() {
