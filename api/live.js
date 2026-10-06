@@ -7,6 +7,9 @@ const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
 const KEY = process.env.YT_API_KEY;
 
+// Kalau kuota API habis, jangan coba API lagi untuk sementara (hemat waktu, langsung scraping)
+let apiBlockedUntil = 0;
+
 async function http(url, headers = {}) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 7000);
@@ -59,6 +62,17 @@ function parseStreamsPage(html) {
   if (i < 0) return null;
   const ids = [...html.slice(Math.max(0, i - 4000), i).matchAll(/"videoId":"([\w-]{11})"/g)];
   return ids.length ? ids[ids.length - 1][1] : null;
+}
+
+// Cadangan tanpa kuota: RSS channel -> 2 video terbaru -> cek halaman watch (isLiveNow)
+async function viaRss(channelId, dbg) {
+  const r = await http(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, { "User-Agent": UA });
+  const xml = await r.text();
+  const ids = [...xml.matchAll(/<yt:videoId>([\w-]{11})<\/yt:videoId>/g)].map((m) => m[1]).slice(0, 2);
+  dbg.rssIds = ids;
+  const pages = await Promise.all(ids.map((id) => getHtml(`watch?v=${id}`).then((h) => ({ id, h })).catch(() => null)));
+  const hit = pages.find((x) => x && x.h.includes('"isLiveNow":true'));
+  return hit ? hit.id : null;
 }
 
 // Cara paling akurat: YouTube Data API (butuh YT_API_KEY, hemat kuota ±3 unit)
@@ -138,12 +152,14 @@ module.exports = async (req, res) => {
   const dbg = { hasApiKey: !!KEY };
   let out = null;
 
-  if (KEY) {
+  if (KEY && Date.now() < apiBlockedUntil) dbg.apiSkipped = "kuota habis, memakai scraping";
+  if (KEY && Date.now() >= apiBlockedUntil) {
     try {
       out = await viaApi(cleanHandle, channel);
       if (out) out.source = "api";
     } catch (e) {
       dbg.apiError = String(e.message || e);
+      if (/quota/i.test(dbg.apiError)) apiBlockedUntil = Date.now() + 30 * 60 * 1000;
     }
   }
 
@@ -153,8 +169,21 @@ module.exports = async (req, res) => {
       dbg.liveHtmlLength = html.length;
       dbg.consentPage = /consent\.youtube\.com|Before you continue/.test(html);
       let videoId = parseLivePage(html);
+      dbg.live = {
+        title: (html.match(/<title>([^<]*)<\/title>/) || [])[1] || null,
+        canonical: (html.match(/<link rel="canonical" href="([^"]+)"/) || [])[1] || null,
+        isLiveNowTrue: html.includes('"isLiveNow":true'),
+        isLiveNowFalse: html.includes('"isLiveNow":false'),
+      };
       let channelId = channel || findChannelId(html);
       let source = "live-page";
+
+      if (!videoId && channelId) {
+        try {
+          videoId = await viaRss(channelId, dbg);
+          if (videoId) source = "rss-watch";
+        } catch (e) { dbg.rssError = String(e.message || e); }
+      }
 
       if (!videoId) {
         try {
