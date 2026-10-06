@@ -1130,26 +1130,74 @@
     }
 
     // ---------- Grid video (campuran dari kelompok mana pun) ----------
-    // Buka live TikTok di jendela popup (harus dipanggil langsung dari klik pengguna agar tidak diblokir browser)
-    function openTikTokLive(handle) {
-      const url = `https://www.tiktok.com/@${encodeURIComponent(handle)}/live`;
-      const w = window.open(url, "tt_" + handle, "popup=yes,width=460,height=860");
-      if (!w) alert("Popup diblokir browser. Izinkan popup untuk situs ini, lalu klik lagi.");
-      else w.focus();
+    // ---------- TikTok: popup yang diposisikan tepat di atas slot grid ----------
+    const ttWins = {};
+    const TT_CHROME = 78;   // perkiraan tinggi title bar + address bar jendela popup (ubah kalau posisinya kurang pas)
+
+    function ttBox(id) {
+      const card = document.querySelector(`.video-card[data-sid="${id}"]`);
+      if (!card) return null;
+      const r = card.getBoundingClientRect();
+      const hdr = card.querySelector(".video-card-header");
+      const hh = hdr ? hdr.getBoundingClientRect().height : 0;
+      const sx = window.screenX ?? window.screenLeft, sy = window.screenY ?? window.screenTop;
+      const side = Math.max(0, (window.outerWidth - window.innerWidth) / 2);
+      const topChrome = Math.max(0, window.outerHeight - window.innerHeight - side);
+      return {
+        left: Math.round(sx + side + r.left),
+        top: Math.round(sy + topChrome + r.top + hh - TT_CHROME),
+        width: Math.max(200, Math.round(r.width)),
+        height: Math.max(200, Math.round(r.height - hh))
+      };
     }
+
+    // Harus dipanggil langsung dari klik pengguna agar popup tidak diblokir browser
+    function openTikTokFor(id) {
+      const st = activeStreams.find(x => x.id === id);
+      if (!st) return;
+      const b = ttBox(id) || { left: 100, top: 60, width: 460, height: 860 };
+      let w = ttWins[id];
+      if (w && !w.closed) {
+        try { w.moveTo(b.left, b.top); w.resizeTo(b.width, b.height + TT_CHROME); } catch (e) {}
+        w.focus();
+        return;
+      }
+      const url = `https://www.tiktok.com/@${encodeURIComponent(st.handle)}/live`;
+      w = window.open(url, "tt_" + st.handle, `popup=yes,left=${b.left},top=${b.top},width=${b.width},height=${b.height}`);
+      if (!w) { alert("Popup diblokir browser. Izinkan popup untuk situs ini, lalu klik lagi."); return; }
+      ttWins[id] = w;
+    }
+
+    function closeTikTok(id) {
+      const w = ttWins[id];
+      if (w && !w.closed) { try { w.close(); } catch (e) {} }
+      delete ttWins[id];
+    }
+
+    function repositionTikTok() {
+      Object.keys(ttWins).forEach(id => {
+        const w = ttWins[id];
+        if (!w || w.closed) { delete ttWins[id]; return; }
+        const b = ttBox(id);
+        if (!b) return;
+        try { w.moveTo(b.left, b.top); w.resizeTo(b.width, b.height + TT_CHROME); } catch (e) {}
+      });
+    }
+    let ttResizeTimer;
+    window.addEventListener("resize", () => { clearTimeout(ttResizeTimer); ttResizeTimer = setTimeout(repositionTikTok, 250); });
+    window.addEventListener("beforeunload", () => Object.keys(ttWins).forEach(closeTikTok));
 
     async function toggleStreamer(st) {
       const idx = activeStreams.findIndex(s => s.id === st.id);
       if (idx !== -1) { activeStreams.splice(idx, 1); render(); renderGrid(); return; }
-      if (st.platform === "tiktok" && !TIKTOK_EMBED) { openTikTokLive(st.handle); return; }
       if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
 
       if (st.platform === "tiktok") {
-        // Embed belum diizinkan TikTok -> klik nama streamer langsung membuka popup live-nya
-        if (!TIKTOK_EMBED) { openTikTokLive(st.handle); return; }
+        // Klik nama streamer: slot muncul di grid + popup TikTok otomatis menempel di atas slot itu
         activeStreams.push({ id: st.id, title: st.name, platform: "tiktok", handle: st.handle });
         render();
         renderGrid();
+        if (!TIKTOK_EMBED) openTikTokFor(st.id);
         return;
       }
 
@@ -1202,11 +1250,12 @@
       if (/tiktok\.com/i.test(val)) {
         const u = parseTikTokInput(val);
         if (!u) { alert("Link TikTok tidak dikenali! Contoh: https://www.tiktok.com/@username/live"); return; }
-        if (!TIKTOK_EMBED) { openTikTokLive(u); return; }
-        activeStreams.push({ id: "custom_tt_" + Date.now(), title: "TikTok @" + u, platform: "tiktok", handle: u });
+        const ttId = "custom_tt_" + Date.now();
+        activeStreams.push({ id: ttId, title: "TikTok @" + u, platform: "tiktok", handle: u });
         input.value = "";
         render();
         renderGrid();
+        if (!TIKTOK_EMBED) openTikTokFor(ttId);
         return;
       }
       const videoId = extractVideoId(val);
@@ -1231,13 +1280,14 @@
       grid.className = `grid-${count}`;
       if (count === 0) {
         Object.keys(players).forEach(k => delete players[k]);
+        Object.keys(ttWins).forEach(closeTikTok);
         grid.innerHTML = `<div>Pilih YouTuber di panel kiri atau paste link live di bagian atas.</div>`;
         return;
       }
       // Hapus kartu yang sudah tidak aktif; kartu lain TIDAK dimuat ulang
       [...grid.children].forEach(c => {
         if (!c.dataset.sid || !activeStreams.some(s => s.id === c.dataset.sid)) {
-          if (c.dataset.sid) delete players[c.dataset.sid];
+          if (c.dataset.sid) { delete players[c.dataset.sid]; closeTikTok(c.dataset.sid); }
           c.remove();
         }
       });
@@ -1255,6 +1305,7 @@
         grid.appendChild(card);
         mountCard(stream.id);
       });
+      setTimeout(repositionTikTok, 80);
     }
 
     function mountCard(id) {
@@ -1269,11 +1320,11 @@
           const box = document.createElement("div");
           box.className = "tt-placeholder";
           box.innerHTML = `<div class="tt-title">@${esc(s.handle)} · TikTok LIVE</div>
-            <div class="tt-note">Embed TikTok LIVE belum diizinkan untuk domain ini, jadi streamnya dibuka di jendela popup.</div>
-            <button class="btn tt-open">▶ Tonton di jendela popup</button>
+            <div class="tt-note">Live TikTok tampil di jendela popup yang menempel di slot ini. Kalau popup tertutup atau bergeser, klik tombol di bawah.</div>
+            <button class="btn tt-open">▶ Buka / posisikan popup</button>
             <button class="btn tt-try">Coba embed</button>`;
-          box.querySelector(".tt-open").onclick = () => window.open(url, "tt_" + s.handle, "popup=yes,width=460,height=860");
-          box.querySelector(".tt-try").onclick = () => { s.tryEmbed = true; mountCard(id); };
+          box.querySelector(".tt-open").onclick = () => openTikTokFor(id);
+          box.querySelector(".tt-try").onclick = () => { s.tryEmbed = true; closeTikTok(id); mountCard(id); };
           card.appendChild(box);
           return;
         }
