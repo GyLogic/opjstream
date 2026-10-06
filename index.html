@@ -1075,7 +1075,8 @@
       if (silent !== true) { streamers.forEach(s => liveStatus[s.id] = "checking"); render(); }
       await Promise.all(streamers.map(async s => { await refreshStreamer(s); render(); }));
     }
-    setInterval(() => { if (role) checkAll(true); }, 120000);
+    // Cek live otomatis berkala DIHAPUS: status hanya dicek saat halaman dibuka/di-refresh
+    // (lihat onSnapshot streamers), atau saat tombol "Check Live" ditekan manual.
 
     // ---------- Render panel kiri ----------
     function render() {
