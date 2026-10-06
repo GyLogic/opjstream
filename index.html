@@ -1111,7 +1111,7 @@
 
         let statusHtml = `<span class="status-dot"></span><span>Offline</span>`;
         if (status === "live") statusHtml = `<span class="live-pill">LIVE</span><span>Sedang live</span>`;
-        else if (status === "unknown") statusHtml = `<span class="status-dot"></span><span>TikTok · klik untuk tonton</span>`;
+        else if (status === "unknown") statusHtml = `<span class="status-dot"></span><span>TikTok · klik = buka live</span>`;
         else if (status === "checking") statusHtml = `<span class="status-dot"></span><span>Mengecek...</span>`;
 
         card.innerHTML = `
@@ -1130,12 +1130,23 @@
     }
 
     // ---------- Grid video (campuran dari kelompok mana pun) ----------
+    // Buka live TikTok di jendela popup (harus dipanggil langsung dari klik pengguna agar tidak diblokir browser)
+    function openTikTokLive(handle) {
+      const url = `https://www.tiktok.com/@${encodeURIComponent(handle)}/live`;
+      const w = window.open(url, "tt_" + handle, "popup=yes,width=460,height=860");
+      if (!w) alert("Popup diblokir browser. Izinkan popup untuk situs ini, lalu klik lagi.");
+      else w.focus();
+    }
+
     async function toggleStreamer(st) {
       const idx = activeStreams.findIndex(s => s.id === st.id);
       if (idx !== -1) { activeStreams.splice(idx, 1); render(); renderGrid(); return; }
+      if (st.platform === "tiktok" && !TIKTOK_EMBED) { openTikTokLive(st.handle); return; }
       if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
 
       if (st.platform === "tiktok") {
+        // Embed belum diizinkan TikTok -> klik nama streamer langsung membuka popup live-nya
+        if (!TIKTOK_EMBED) { openTikTokLive(st.handle); return; }
         activeStreams.push({ id: st.id, title: st.name, platform: "tiktok", handle: st.handle });
         render();
         renderGrid();
@@ -1191,6 +1202,7 @@
       if (/tiktok\.com/i.test(val)) {
         const u = parseTikTokInput(val);
         if (!u) { alert("Link TikTok tidak dikenali! Contoh: https://www.tiktok.com/@username/live"); return; }
+        if (!TIKTOK_EMBED) { openTikTokLive(u); return; }
         activeStreams.push({ id: "custom_tt_" + Date.now(), title: "TikTok @" + u, platform: "tiktok", handle: u });
         input.value = "";
         render();
