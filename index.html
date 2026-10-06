@@ -1302,11 +1302,14 @@
       if (!st || st.platform === "tiktok") return;
       let vd;
       try { vd = player.getVideoData(); } catch (_) { return; }
-      if (!vd || !vd.isLive || !vd.video_id) return;
+      let dur = -1;
+      try { dur = player.getDuration(); } catch (_) {}
+      // video live: isLive true, atau durasi 0 saat sedang diputar
+      if (!vd || !(vd.isLive || dur === 0)) return;
       playerLive[id] = Date.now();
-      if (liveStatus[id] !== "live" || liveVideo[id] !== vd.video_id) {
+      if (liveStatus[id] !== "live" || (vd.video_id && liveVideo[id] !== vd.video_id)) {
         liveStatus[id] = "live";
-        liveVideo[id] = vd.video_id;
+        if (vd.video_id) liveVideo[id] = vd.video_id;
         const s = activeStreams.find(x => x.id === id);
         if (s) {
           s.title = st.name;
