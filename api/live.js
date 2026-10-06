@@ -1,6 +1,7 @@
 // Vercel Serverless Function
 // GET /api/live?handle=NamaHandle  atau  /api/live?channel=UCxxxxxxxxxxxxxxxxxxxxxx
 // Tambahkan &debug=1 untuk melihat detail diagnosa.
+// TikTok: /api/live?platform=tiktok&handle=username  (deteksi live bersifat best-effort)
 // Opsional (paling akurat): set Environment Variable YT_API_KEY di Vercel.
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
@@ -79,9 +80,56 @@ async function viaApi(handle, channel) {
   return { isLive: !!live, videoId: live ? live.id : null, channelId: ch };
 }
 
+
+// ---------- TikTok (best-effort) ----------
+// TikTok tidak punya API publik untuk cek status live. Kita baca halaman profil dan lihat
+// apakah user punya roomId aktif. Kalau TikTok memblokir/format berubah -> isLive: null (tidak pasti).
+async function tiktokStatus(user) {
+  const r = await http(`https://www.tiktok.com/@${user}`, {
+    "User-Agent": UA,
+    "Accept-Language": "en-US,en;q=0.9",
+  });
+  const html = await r.text();
+  let roomId = null;
+  let known = false;
+  const m = html.match(/<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__"[^>]*>([\s\S]*?)<\/script>/);
+  if (m) {
+    try {
+      const data = JSON.parse(m[1]);
+      const detail = data["__DEFAULT_SCOPE__"] && data["__DEFAULT_SCOPE__"]["webapp.user-detail"];
+      const u = detail && detail.userInfo && detail.userInfo.user;
+      if (u) {
+        known = true;
+        roomId = u.roomId && u.roomId !== "0" ? String(u.roomId) : null;
+      }
+    } catch (e) {}
+  }
+  if (!known) {
+    const rm = html.match(/"roomId":"(\d*)"/);
+    if (rm) {
+      known = true;
+      roomId = rm[1] && rm[1] !== "0" ? rm[1] : null;
+    }
+  }
+  return { platform: "tiktok", isLive: known ? !!roomId : null, roomId, handle: user, source: "tiktok-page" };
+}
+
 module.exports = async (req, res) => {
-  const { handle, channel, debug } = req.query;
+  const { handle, channel, debug, platform } = req.query;
   const cleanHandle = handle ? String(handle).replace(/^@/, "") : "";
+
+  if (platform === "tiktok") {
+    if (!/^[\w.]{2,40}$/.test(cleanHandle)) return res.status(400).json({ error: "username TikTok tidak valid" });
+    try {
+      const out = await tiktokStatus(cleanHandle);
+      res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=120");
+      return res.status(200).json(out);
+    } catch (e) {
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(200).json({ platform: "tiktok", isLive: null, handle: cleanHandle, error: String(e.message || e) });
+    }
+  }
+
   let path;
   if (channel && /^UC[\w-]{22}$/.test(channel)) path = `channel/${channel}`;
   else if (cleanHandle && /^[\w.\-]{1,60}$/.test(cleanHandle)) path = `@${cleanHandle}`;
