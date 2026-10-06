@@ -346,7 +346,6 @@
     }
 
     .btn-delete-streamer {
-      display: none;
       background: rgba(255, 51, 75, 0.2);
       border: 1px solid var(--accent-red);
       color: var(--accent-red);
@@ -361,7 +360,20 @@
     }
 
     .btn-delete-streamer:hover { background: var(--accent-red); color: #fff; }
-    .is-admin .btn-delete-streamer { display: flex; }
+    .btn-delete-streamer { display: flex; }
+
+    .btn-add-toggle {
+      margin: 10px 10px 0;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px dashed var(--accent-gold);
+      color: var(--accent-gold);
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-add-toggle:hover { background: rgba(245, 158, 11, 0.22); }
 
     .sidebar-footer {
       padding: 10px;
@@ -452,6 +464,22 @@
       border: none;
       flex: 1;
     }
+
+    .admin-only { display: none; }
+    .is-admin .admin-only { display: block; }
+    .is-admin .group-actions { display: flex; }
+    .group-actions { gap: 6px; padding: 0 10px 8px; }
+    .group-actions .btn { padding: 4px 10px; font-size: 0.72rem; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 10px 8px; }
+    .tab { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .tab:hover { color: #fff; }
+    .tab.active { background: var(--bg-card-active); color: #fff; border-color: var(--accent-gold); }
+    .tab-live { background: var(--accent-red); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 0.68rem; }
+    .streamer-item.live { border-color: rgba(255, 51, 75, 0.45); }
+    .streamer-item.live .streamer-avatar { box-shadow: 0 0 0 2px var(--accent-red); }
+    .live-pill { background: var(--accent-red); color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 3px; animation: pulse 1.6s infinite; }
+    @keyframes pulse { 50% { opacity: 0.55; } }
+    .list-empty { color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px 10px; }
   </style>
 </head>
 <body>
@@ -492,19 +520,24 @@
     <aside id="sidebarArea">
       <div class="sidebar-header">
         <span>Streamers</span>
-        <button class="btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="checkAllStatus()">Check Live</button>
+        <button class="btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="checkAll()">Check Live</button>
       </div>
 
-      <!-- Form Tambah Permanen (Admin) -->
-      <div class="admin-form" id="adminForm" style="display: none;">
-        <span style="font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);">+ Tambah Streamer Permanen</span>
-        <input type="text" id="newStreamerName" placeholder="Nama Streamer (Contoh: Ncang)" />
-        <input type="text" id="newStreamerHandle" placeholder="Handle (@Ncangpitung) atau Link Live" />
-        <input type="text" id="newStreamerAvatar" placeholder="Link Foto Profil (Opsional)" />
-        <button onclick="addStreamerByAdmin()">Simpan Streamer</button>
+      <div id="tabs" class="tabs"></div>
+      <div class="group-actions admin-only">
+        <button class="btn" onclick="addGroup()">+ Grup</button>
+        <button class="btn btn-danger" onclick="deleteGroup()">Hapus Grup</button>
       </div>
 
-      <!-- Daftar Streamer -->
+      <button class="btn-add-toggle admin-only" id="addToggle" onclick="toggleAddForm()">+ Tambah YouTuber</button>
+      <div class="admin-form" id="adminForm" style="display: none; margin-top: 10px;">
+        <span id="addTarget" style="font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);"></span>
+        <input type="text" id="newStreamerName" placeholder="Nama YouTuber (opsional)" />
+        <input type="text" id="newStreamerHandle" placeholder="Handle (@nama) / Link Channel / Link Live" onkeydown="if(event.key==='Enter') addStreamer()" />
+        <input type="text" id="newStreamerAvatar" placeholder="Link Foto Profil (opsional)" />
+        <button onclick="addStreamer()">Simpan YouTuber</button>
+      </div>
+
       <div class="streamer-list" id="streamerList"></div>
 
       <div class="sidebar-footer">
@@ -518,111 +551,211 @@
     </main>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script>
-    const INITIAL_STREAMERS = [
-      { 
-        id: "str_juki", 
-        name: "Juki", 
-        handle: "juki33", 
-        avatar: "https://ui-avatars.com/api/?name=Juki&background=ff334b&color=fff" 
-      },
-      { 
-        id: "str_ncang", 
-        name: "Ncang Pitung", 
-        handle: "Ncangpitung", 
-        avatar: "https://ui-avatars.com/api/?name=Ncang&background=2ecc71&color=fff" 
-      }
-    ];
+    // ====== ISI DENGAN DATA FIREBASE ANDA (Project settings > Your apps > Web app) ======
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyCgxo-FHKdkSqSnjsWCc5jXFchDr5qSW3k",
+      authDomain: "opjstream.firebaseapp.com",
+      projectId: "opjstream",
+      storageBucket: "opjstream.firebasestorage.app",
+      messagingSenderId: "349528754058",
+      appId: "1:349528754058:web:762d22bee3012a88a7aa73"
+    };
+    const ADMIN_EMAIL = "admin@opjstream.com";   // akun admin yang dibuat di Firebase Authentication
+    const MEMBER_PASSWORD = "opjontop";          // password member (hanya bisa menonton)
+    // ===================================================================================
 
-    let streamers = [];
-    function loadStreamers() {
-      const saved = localStorage.getItem("multi_streamers_v6");
-      if (saved) {
-        try {
-          streamers = JSON.parse(saved);
-        } catch (e) {
-          streamers = INITIAL_STREAMERS;
-        }
-      } else {
-        streamers = INITIAL_STREAMERS;
-        localStorage.setItem("multi_streamers_v6", JSON.stringify(streamers));
-      }
-    }
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    function saveStreamers() {
-      localStorage.setItem("multi_streamers_v6", JSON.stringify(streamers));
-    }
+    let role = null, started = false, seeded = false, fbErr = "";
+    let groups = [], streamers = [], currentGroup = null, activeStreams = [];
+    const liveStatus = {}, liveVideo = {}, lastCheck = {}, chanCache = {};
 
-    let currentUserRole = null;
-    let activeStreams = [];
-    const streamerLiveStatus = {};
-    const streamerCurrentVideoId = {};
+    const $ = id => document.getElementById(id);
+    const isAdmin = () => role === "admin";
+    const chanOf = s => s.channelId || chanCache[s.id] || null;
+    const avatarFor = n => `https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&background=252836&color=fff`;
+    const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-    function verifyLogin() {
-      const pass = document.getElementById("passwordInput").value.trim();
-      const err = document.getElementById("loginError");
-
-      if (pass === "opjterbaik") {
-        currentUserRole = "admin";
-      } else if (pass === "opjontop") {
-        currentUserRole = "user";
-      } else {
-        err.innerText = "Password salah!";
+    // ---------- Login ----------
+    async function verifyLogin() {
+      const pass = $("passwordInput").value.trim();
+      const err = $("loginError");
+      if (!pass) return;
+      if (pass === MEMBER_PASSWORD) {
+        sessionStorage.setItem("user_session_role", "user");
+        enter("user");
         return;
       }
-
-      sessionStorage.setItem("user_session_role", currentUserRole);
-      applyLoginState();
+      err.innerText = "Memeriksa...";
+      try {
+        await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pass);
+        enter("admin");
+      } catch (e) {
+        const c = e.code || "";
+        err.innerText = /invalid|wrong-password|user-not-found/.test(c) ? "Password salah!" : "Gagal login: " + (c || e.message);
+      }
     }
 
-    function applyLoginState() {
-      document.getElementById("loginOverlay").style.display = "none";
-      const roleBadge = document.getElementById("roleBadge");
-      const adminForm = document.getElementById("adminForm");
-      const sidebarArea = document.getElementById("sidebarArea");
-
-      if (currentUserRole === "admin") {
-        roleBadge.className = "badge-role role-admin";
-        roleBadge.innerText = "Admin";
-        adminForm.style.display = "flex";
-        sidebarArea.classList.add("is-admin");
-      } else {
-        roleBadge.className = "badge-role role-user";
-        roleBadge.innerText = "Member";
-        adminForm.style.display = "none";
-        sidebarArea.classList.remove("is-admin");
-      }
-
-      renderSidebar();
-      checkAllStatus();
+    function enter(r) {
+      if (started) return;
+      started = true;
+      role = r;
+      $("loginOverlay").style.display = "none";
+      const badge = $("roleBadge");
+      badge.className = "badge-role " + (isAdmin() ? "role-admin" : "role-user");
+      badge.innerText = isAdmin() ? "Admin" : "Member";
+      document.body.classList.toggle("is-admin", isAdmin());
+      startListeners();
     }
 
     function logout() {
       sessionStorage.removeItem("user_session_role");
-      window.location.reload();
+      auth.signOut().finally(() => location.reload());
     }
 
-    // Helper fetch dengan timeout 3 detik agar TIDAK STUCK di Checking
+    auth.onAuthStateChanged(u => {
+      if (started) return;
+      if (u && u.email === ADMIN_EMAIL) enter("admin");
+      else if (sessionStorage.getItem("user_session_role") === "user") enter("user");
+    });
+
+    // ---------- Firebase (sinkron real-time antar device) ----------
+    function startListeners() {
+      db.collection("groups").orderBy("createdAt").onSnapshot(snap => {
+        groups = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (!groups.length && isAdmin() && !seeded) { seeded = true; seedData(); return; }
+        if (!groups.some(g => g.id === currentGroup)) currentGroup = groups[0] ? groups[0].id : null;
+        fbErr = "";
+        render();
+      }, e => { fbErr = "Gagal membaca Firebase: " + e.message; render(); });
+
+      db.collection("streamers").orderBy("createdAt").onSnapshot(snap => {
+        streamers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const before = activeStreams.length;
+        activeStreams = activeStreams.filter(a => a.id.startsWith("custom_") || streamers.some(s => s.id === a.id));
+        streamers.filter(s => !lastCheck[s.id]).forEach(s => {
+          liveStatus[s.id] = "checking";
+          refreshStreamer(s).then(render);
+        });
+        render();
+        if (activeStreams.length !== before) renderGrid();
+      }, e => { fbErr = "Gagal membaca Firebase: " + e.message; render(); });
+    }
+
+    async function seedData() {
+      const t = Date.now();
+      const opj = await db.collection("groups").add({ name: "OPJ", createdAt: t });
+      await db.collection("groups").add({ name: "Nakama", createdAt: t + 1 });
+      const base = { channelId: null, staticVideoId: null, group: opj.id };
+      await db.collection("streamers").add({ ...base, name: "Juki", handle: "juki33", avatar: avatarFor("Juki"), createdAt: t });
+      await db.collection("streamers").add({ ...base, name: "Ncang Pitung", handle: "Ncangpitung", avatar: avatarFor("Ncang Pitung"), createdAt: t + 1 });
+    }
+
+    // ---------- Kelompok ----------
+    function selectGroup(id) { currentGroup = id; $("adminForm").style.display = "none"; render(); }
+
+    async function addGroup() {
+      if (!isAdmin()) return;
+      const name = (prompt("Nama kelompok baru:") || "").trim();
+      if (!name) return;
+      if (groups.some(g => g.name.toLowerCase() === name.toLowerCase())) { alert("Kelompok sudah ada."); return; }
+      try {
+        const ref = await db.collection("groups").add({ name, createdAt: Date.now() });
+        currentGroup = ref.id;
+        render();
+      } catch (e) { alert("Gagal menyimpan: " + e.message); }
+    }
+
+    async function deleteGroup() {
+      if (!isAdmin() || !currentGroup) return;
+      const g = groups.find(x => x.id === currentGroup);
+      const members = streamers.filter(s => s.group === currentGroup);
+      if (!confirm(`Hapus kelompok "${g.name}" beserta ${members.length} YouTuber di dalamnya?`)) return;
+      try {
+        const batch = db.batch();
+        members.forEach(m => batch.delete(db.collection("streamers").doc(m.id)));
+        batch.delete(db.collection("groups").doc(g.id));
+        await batch.commit();
+      } catch (e) { alert("Gagal menghapus: " + e.message); }
+    }
+
+    // ---------- Tambah / hapus YouTuber (admin) ----------
+    function toggleAddForm() {
+      if (!currentGroup) { alert("Buat kelompok dulu dengan tombol + Grup."); return; }
+      const f = $("adminForm");
+      f.style.display = f.style.display === "none" ? "flex" : "none";
+      if (f.style.display === "flex") $("newStreamerHandle").focus();
+    }
+
+    async function addStreamer() {
+      if (!isAdmin() || !currentGroup) return;
+      let name = $("newStreamerName").value.trim();
+      const inputVal = $("newStreamerHandle").value.trim();
+      if (!inputVal) { alert("Handle / Link channel wajib diisi!"); return; }
+
+      let handle = "", staticVideoId = null;
+      const vid = extractVideoId(inputVal);
+      if (vid && /youtu\.?be/.test(inputVal)) staticVideoId = vid;
+      const chMatch = inputVal.match(/(UC[a-zA-Z0-9_-]{22})/);
+      const channelId = chMatch ? chMatch[1] : null;
+
+      if (inputVal.includes("@")) {
+        handle = inputVal.split("@")[1].split(/[\/?#]/)[0];
+      } else if (inputVal.includes("youtube.com/")) {
+        const seg = inputVal.replace(/.*youtube\.com\//, "").split(/[?#]/)[0].split("/");
+        if (seg[0] === "c" || seg[0] === "user") handle = seg[1] || "";
+        else if (!["channel", "watch", "live"].includes(seg[0])) handle = seg[0];
+      } else if (!channelId && !staticVideoId) {
+        handle = inputVal.replace(/\s+/g, "");
+      }
+
+      const dup = streamers.find(x =>
+        (handle && x.handle && x.handle.toLowerCase() === handle.toLowerCase()) ||
+        (channelId && x.channelId === channelId));
+      if (dup) { alert(`"${dup.name}" sudah terdaftar.`); return; }
+
+      if (!name) name = handle || channelId || "YouTuber";
+      const avatar = $("newStreamerAvatar").value.trim() || avatarFor(name);
+      try {
+        await db.collection("streamers").add({
+          group: currentGroup, name, handle, channelId, staticVideoId, avatar, createdAt: Date.now()
+        });
+        ["newStreamerName", "newStreamerHandle", "newStreamerAvatar"].forEach(i => $(i).value = "");
+        $("adminForm").style.display = "none";
+      } catch (e) { alert("Gagal menyimpan (cek Rules Firestore & login admin): " + e.message); }
+    }
+
+    async function deleteStreamer(id, ev) {
+      ev.stopPropagation();
+      if (!isAdmin()) return;
+      const t = streamers.find(s => s.id === id);
+      if (!confirm(`Hapus permanen "${t ? t.name : ""}" dari daftar?`)) return;
+      try { await db.collection("streamers").doc(id).delete(); }
+      catch (e) { alert("Gagal menghapus: " + e.message); }
+    }
+
+    // ---------- Cek status live ----------
     async function fetchWithTimeout(resource, options = {}) {
       const { timeout = 3500 } = options;
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), timeout);
-      const response = await fetch(resource, {
-        ...options,
-        signal: controller.signal
-      });
-      clearTimeout(id);
-      return response;
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), timeout);
+      try { return await fetch(resource, { ...options, signal: ctl.signal }); }
+      finally { clearTimeout(timer); }
     }
 
-    const streamerLastCheck = {};
+    const withDeadline = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
 
-    // Fallback bila /api/live tidak tersedia (mis. file dibuka lokal)
     async function fetchLiveViaProxy(handle) {
-      const targetUrl = `https://www.youtube.com/@${handle}/live`;
+      const target = `https://www.youtube.com/@${handle}/live`;
       const proxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(target)}`
       ];
       for (const proxy of proxies) {
         try {
@@ -638,136 +771,114 @@
       return null;
     }
 
-    function withDeadline(promise, ms) {
-      return Promise.race([promise, new Promise(resolve => setTimeout(() => resolve(null), ms))]);
-    }
-
-    async function fetchLiveInfo(streamer) {
-      if (!streamer.handle && !streamer.channelId) return null;
+    async function fetchLiveInfo(st) {
+      const ch = chanOf(st);
+      if (!st.handle && !ch) return null;
       try {
-        const q = streamer.channelId
-          ? `channel=${encodeURIComponent(streamer.channelId)}`
-          : `handle=${encodeURIComponent(streamer.handle)}`;
+        const q = ch ? `channel=${encodeURIComponent(ch)}` : `handle=${encodeURIComponent(st.handle)}`;
         const resp = await fetchWithTimeout(`/api/live?${q}`, { timeout: 9000 });
         if (resp.ok) {
           const d = await resp.json();
           if (d && !d.error) return d;
         }
       } catch (e) {}
-      return streamer.handle ? fetchLiveViaProxy(streamer.handle) : null;
+      return st.handle ? fetchLiveViaProxy(st.handle) : null;
     }
 
-    async function refreshStreamer(streamer) {
+    async function refreshStreamer(st) {
       let data = null;
-      try {
-        // batas keras 14 detik -> status PASTI berubah, tidak stuck "Checking..."
-        data = await withDeadline(fetchLiveInfo(streamer), 14000);
-      } catch (e) {}
-      streamerLastCheck[streamer.id] = Date.now();
-      if (data && data.channelId && !streamer.channelId) {
-        streamer.channelId = data.channelId;
-        saveStreamers();
+      try { data = await withDeadline(fetchLiveInfo(st), 14000); } catch (e) {}
+      lastCheck[st.id] = Date.now();
+      if (data && data.channelId && !chanOf(st)) {
+        chanCache[st.id] = data.channelId;
+        if (isAdmin()) db.collection("streamers").doc(st.id).update({ channelId: data.channelId }).catch(() => {});
       }
       if (data && data.isLive && data.videoId) {
-        streamerCurrentVideoId[streamer.id] = data.videoId;
-        streamerLiveStatus[streamer.id] = "live";
+        liveVideo[st.id] = data.videoId;
+        liveStatus[st.id] = "live";
       } else {
-        delete streamerCurrentVideoId[streamer.id];
-        streamerLiveStatus[streamer.id] = "ready";
+        delete liveVideo[st.id];
+        liveStatus[st.id] = "ready";
       }
     }
 
-    function esc(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    async function checkAll(silent) {
+      if (silent !== true) { streamers.forEach(s => liveStatus[s.id] = "checking"); render(); }
+      await Promise.all(streamers.map(async s => { await refreshStreamer(s); render(); }));
+    }
+    setInterval(() => { if (role) checkAll(true); }, 120000);
 
-    function renderSidebar() {
-      const listEl = document.getElementById("streamerList");
+    // ---------- Render panel kiri ----------
+    function render() {
+      $("tabs").innerHTML = groups.map(g => {
+        const n = streamers.filter(s => s.group === g.id && liveStatus[s.id] === "live").length;
+        return `<button class="tab ${g.id === currentGroup ? "active" : ""}" onclick="selectGroup('${g.id}')">${esc(g.name)}${n ? `<span class="tab-live">${n} LIVE</span>` : ""}</button>`;
+      }).join("");
+
+      const g = groups.find(x => x.id === currentGroup);
+      $("addTarget").innerText = g ? `Tambah ke kelompok: ${g.name}` : "";
+
+      const listEl = $("streamerList");
       listEl.innerHTML = "";
+      if (fbErr) { listEl.innerHTML = `<div class="list-empty">${esc(fbErr)}</div>`; return; }
+      if (!groups.length) { listEl.innerHTML = `<div class="list-empty">${isAdmin() ? "Belum ada kelompok. Klik + Grup." : "Belum ada data."}</div>`; return; }
 
-      streamers.forEach(streamer => {
-        const isActive = activeStreams.some(s => s.id === streamer.id);
-        const status = streamerLiveStatus[streamer.id] || "ready";
+      // Yang sedang LIVE dinaikkan ke paling atas
+      const list = streamers.filter(s => s.group === currentGroup).sort((a, b) =>
+        (liveStatus[b.id] === "live") - (liveStatus[a.id] === "live") || a.createdAt - b.createdAt);
+      if (!list.length) listEl.innerHTML = `<div class="list-empty">Belum ada YouTuber di kelompok ini.</div>`;
 
+      list.forEach(st => {
+        const status = liveStatus[st.id] || "checking";
+        const isActive = activeStreams.some(s => s.id === st.id);
         const card = document.createElement("div");
-        card.className = `streamer-item ${isActive ? "active" : ""}`;
+        card.className = `streamer-item ${status === "live" ? "live" : ""} ${isActive ? "active" : ""}`;
+        card.onclick = () => toggleStreamer(st);
 
-        card.onclick = (e) => {
-          if (e.target.classList.contains("btn-delete-streamer")) return;
-          toggleStreamer(streamer);
-        };
-
-        let statusText = "Ready to Play";
-        let isLiveClass = "";
-        if (status === "live") {
-          statusText = "Live Now";
-          isLiveClass = "live";
-        } else if (status === "checking") {
-          statusText = "Checking...";
-        }
+        let statusHtml = `<span class="status-dot"></span><span>Offline</span>`;
+        if (status === "live") statusHtml = `<span class="live-pill">LIVE</span><span>Sedang live</span>`;
+        else if (status === "checking") statusHtml = `<span class="status-dot"></span><span>Mengecek...</span>`;
 
         card.innerHTML = `
-          <img src="${streamer.avatar || 'https://via.placeholder.com/40'}" alt="${esc(streamer.name)}" class="streamer-avatar" onerror="this.src='https://via.placeholder.com/40'" />
+          <img src="${esc(st.avatar || avatarFor(st.name))}" alt="${esc(st.name)}" class="streamer-avatar" onerror="this.src='${avatarFor(st.name)}'" />
           <div class="streamer-info">
-            <div class="streamer-name">${esc(streamer.name)}</div>
-            <div class="streamer-status ${isLiveClass}">
-              <span class="status-dot"></span>
-              <span>${statusText}</span>
-            </div>
+            <div class="streamer-name">${esc(st.name)}</div>
+            <div class="streamer-status ${status === "live" ? "live" : ""}">${statusHtml}</div>
           </div>
-          <button class="btn-delete-streamer" title="Hapus Streamer" onclick="deleteStreamerByAdmin('${streamer.id}', event)">✕</button>
-        `;
-
+          ${isAdmin() ? `<button class="btn-delete-streamer" title="Hapus YouTuber">✕</button>` : ""}`;
+        const del = card.querySelector(".btn-delete-streamer");
+        if (del) del.onclick = ev => deleteStreamer(st.id, ev);
         listEl.appendChild(card);
       });
     }
 
-    // Toggle Streamer Grid
-    async function toggleStreamer(streamer) {
-      const existingIdx = activeStreams.findIndex(s => s.id === streamer.id);
+    // ---------- Grid video (campuran dari kelompok mana pun) ----------
+    async function toggleStreamer(st) {
+      const idx = activeStreams.findIndex(s => s.id === st.id);
+      if (idx !== -1) { activeStreams.splice(idx, 1); render(); renderGrid(); return; }
+      if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
 
-      if (existingIdx !== -1) {
-        activeStreams.splice(existingIdx, 1);
-        renderSidebar();
-        renderGrid();
-        return;
+      const fresh = lastCheck[st.id] && Date.now() - lastCheck[st.id] < 60000;
+      if (!chanOf(st) && !(fresh && liveVideo[st.id])) {
+        liveStatus[st.id] = "checking";
+        render();
+        await refreshStreamer(st);
+        render();
       }
+      if (activeStreams.some(x => x.id === st.id)) return;
 
-      if (activeStreams.length >= 8) {
-        alert("Maksimal 8 stream dalam satu layar!");
-        return;
-      }
-
-      const fresh = streamerLastCheck[streamer.id] && Date.now() - streamerLastCheck[streamer.id] < 60000;
-      // Kalau channelId sudah diketahui, tidak perlu menunggu: embed channel
-      // otomatis memutar livestream yang sedang berjalan.
-      if (!streamer.channelId && !(fresh && streamerCurrentVideoId[streamer.id])) {
-        streamerLiveStatus[streamer.id] = "checking";
-        renderSidebar();
-        await refreshStreamer(streamer);
-        renderSidebar();
-      }
-      if (activeStreams.some(x => x.id === streamer.id)) return;
-
-      let videoId = streamerCurrentVideoId[streamer.id] || null;
-      let channelId = null;
-      if (!videoId && streamer.channelId) channelId = streamer.channelId;
-      if (!videoId && !channelId) videoId = streamer.staticVideoId || null;
-
+      let videoId = liveVideo[st.id] || null, channelId = null;
+      if (!videoId && chanOf(st)) channelId = chanOf(st);
+      if (!videoId && !channelId) videoId = st.staticVideoId || null;
       if (!videoId && !channelId) {
-        const input = prompt(`Sistem tidak dapat membaca link live ${streamer.name} secara otomatis.\nMasukkan link live atau Video ID-nya:`);
+        const input = prompt(`Sistem tidak dapat membaca link live ${st.name} secara otomatis.\nMasukkan link live atau Video ID-nya:`);
         if (!input) return;
         videoId = extractVideoId(input);
-        if (videoId) streamerCurrentVideoId[streamer.id] = videoId;
       }
       if (!videoId && !channelId) return;
 
-      activeStreams.push({
-        id: streamer.id,
-        title: channelId ? streamer.name + " (menunggu live)" : streamer.name,
-        videoId: videoId,
-        channelId: channelId
-      });
-
-      renderSidebar();
+      activeStreams.push({ id: st.id, title: channelId ? st.name + " (menunggu live)" : st.name, videoId, channelId });
+      render();
       renderGrid();
     }
 
@@ -775,13 +886,12 @@
       if (!input) return null;
       const str = input.trim();
       if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
-
       try {
         const url = new URL(str);
         if (url.hostname.includes("youtube.com")) {
           if (url.searchParams.has("v")) return url.searchParams.get("v");
-          if (url.pathname.includes("/live/")) return url.pathname.split("/live/")[1].split("/")[0].split("?")[0];
-          if (url.pathname.includes("/embed/")) return url.pathname.split("/embed/")[1].split("/")[0].split("?")[0];
+          if (url.pathname.includes("/live/")) return url.pathname.split("/live/")[1].split("/")[0];
+          if (url.pathname.includes("/embed/")) return url.pathname.split("/embed/")[1].split("/")[0];
         } else if (url.hostname === "youtu.be") {
           return url.pathname.slice(1).split("?")[0];
         }
@@ -789,127 +899,27 @@
       return null;
     }
 
-    function addStreamerByAdmin() {
-      if (currentUserRole !== "admin") return;
-
-      const nameInput = document.getElementById("newStreamerName");
-      const handleInput = document.getElementById("newStreamerHandle");
-      const avatarInput = document.getElementById("newStreamerAvatar");
-
-      const name = nameInput.value.trim();
-      let inputVal = handleInput.value.trim();
-
-      if (!name || !inputVal) {
-        alert("Nama dan Handle / Link wajib diisi!");
-        return;
-      }
-
-      let handle = "";
-      let staticVideoId = null;
-
-      // Cek apakah admin memasukkan link video langsung
-      const potentialVid = extractVideoId(inputVal);
-      if (potentialVid) {
-        staticVideoId = potentialVid;
-      }
-
-      const chMatch = inputVal.match(/(UC[a-zA-Z0-9_-]{22})/);
-      const channelId = chMatch ? chMatch[1] : null;
-
-      if (inputVal.includes("@")) {
-        handle = inputVal.split("@")[1].split("/")[0].split("?")[0];
-      } else if (inputVal.includes("youtube.com/")) {
-        handle = inputVal.replace(/.*youtube\.com\//, "").split("/")[0];
-      } else {
-        handle = inputVal;
-      }
-      if (channelId || (staticVideoId && !inputVal.includes("@"))) handle = "";
-
-      const avatar = avatarInput.value.trim() || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=252836&color=fff`;
-
-      const newId = "str_" + Date.now();
-      streamers.push({
-        id: newId,
-        name: name,
-        handle: handle,
-        channelId: channelId,
-        staticVideoId: staticVideoId,
-        avatar: avatar
-      });
-
-      saveStreamers();
-      nameInput.value = "";
-      handleInput.value = "";
-      avatarInput.value = "";
-
-      renderSidebar();
-      checkAllStatus();
-      alert(`Streamer ${name} berhasil disimpan permanen!`);
-    }
-
-    function deleteStreamerByAdmin(streamerId, event) {
-      event.stopPropagation();
-      if (currentUserRole !== "admin") return;
-
-      const target = streamers.find(s => s.id === streamerId);
-      if (!confirm(`Hapus permanen streamer "${target?.name}"?`)) return;
-
-      streamers = streamers.filter(s => s.id !== streamerId);
-      saveStreamers();
-      removeStream(streamerId);
-      renderSidebar();
-    }
-
     function handleCustomLink() {
-      const input = document.getElementById("customInput");
+      const input = $("customInput");
       const val = input.value.trim();
       if (!val) return;
-
-      if (activeStreams.length >= 8) {
-        alert("Maksimal 8 stream dalam satu layar!");
-        return;
-      }
-
+      if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
       const videoId = extractVideoId(val);
-      if (!videoId) {
-        alert("Link tidak dikenali! Masukkan link live YouTube yang valid.");
-        return;
-      }
-
-      activeStreams.push({
-        id: "custom_" + Date.now(),
-        title: "Live Stream (" + (activeStreams.length + 1) + ")",
-        videoId: videoId
-      });
-
+      if (!videoId) { alert("Link tidak dikenali! Masukkan link live YouTube yang valid."); return; }
+      activeStreams.push({ id: "custom_" + Date.now(), title: "Live Stream (" + (activeStreams.length + 1) + ")", videoId });
       input.value = "";
-      renderSidebar();
+      render();
       renderGrid();
     }
 
-    function removeStream(id) {
-      activeStreams = activeStreams.filter(s => s.id !== id);
-      renderSidebar();
-      renderGrid();
-    }
-
-    function clearAllStreams() {
-      activeStreams = [];
-      renderSidebar();
-      renderGrid();
-    }
+    function removeStream(id) { activeStreams = activeStreams.filter(s => s.id !== id); render(); renderGrid(); }
+    function clearAllStreams() { activeStreams = []; render(); renderGrid(); }
 
     function renderGrid() {
-      const grid = document.getElementById("gridContainer");
+      const grid = $("gridContainer");
       const count = activeStreams.length;
-
       grid.className = `grid-${count}`;
-
-      if (count === 0) {
-        grid.innerHTML = `<div>Pilih YouTuber di panel kiri atau paste link live di bagian atas.</div>`;
-        return;
-      }
-
+      if (count === 0) { grid.innerHTML = `<div>Pilih YouTuber di panel kiri atau paste link live di bagian atas.</div>`; return; }
       grid.innerHTML = "";
       activeStreams.forEach(stream => {
         const embedUrl = stream.videoId
@@ -922,37 +932,11 @@
             <span class="video-title">${esc(stream.title)}</span>
             <button class="btn-close" onclick="removeStream('${stream.id}')" title="Close">✕</button>
           </div>
-          <iframe 
-            src="${embedUrl}" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            referrerpolicy="strict-origin-when-cross-origin"
-            allowfullscreen>
-          </iframe>
-        `;
+          <iframe src="${embedUrl}"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
         grid.appendChild(card);
       });
-    }
-
-    // Cek semua streamer sekaligus (paralel)
-    async function checkAllStatus(silent) {
-      if (silent !== true) {
-        streamers.forEach(st => { streamerLiveStatus[st.id] = "checking"; });
-        renderSidebar();
-      }
-      await Promise.all(streamers.map(async st => {
-        await refreshStreamer(st);
-        renderSidebar();
-      }));
-    }
-
-    // Refresh status otomatis tiap 2 menit
-    setInterval(() => { if (currentUserRole) checkAllStatus(true); }, 120000);
-
-    loadStreamers();
-    const existingSession = sessionStorage.getItem("user_session_role");
-    if (existingSession === "admin" || existingSession === "user") {
-      currentUserRole = existingSession;
-      applyLoginState();
     }
   </script>
 </body>
