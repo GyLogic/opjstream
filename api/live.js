@@ -1,26 +1,35 @@
 // Vercel Serverless Function
-// GET /api/live?handle=Ncangpitung   atau   /api/live?channel=UCxxxxxxxxxxxxxxxxxxxxxx
-// Respon: { isLive, videoId, channelId }
+// GET /api/live?handle=NamaHandle  atau  /api/live?channel=UCxxxxxxxxxxxxxxxxxxxxxx
+// Tambahkan &debug=1 untuk melihat detail diagnosa.
+// Opsional (paling akurat): set Environment Variable YT_API_KEY di Vercel.
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+const KEY = process.env.YT_API_KEY;
 
-async function getHtml(path) {
+async function http(url, headers = {}) {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 7000);
   try {
-    const r = await fetch(`https://www.youtube.com/${path}`, {
-      headers: {
-        "User-Agent": UA,
-        "Accept-Language": "en-US,en;q=0.9",
-        Cookie: "CONSENT=YES+cb; SOCS=CAI",
-      },
-      redirect: "follow",
-      signal: ctl.signal,
-    });
-    return await r.text();
+    return await fetch(url, { headers, redirect: "follow", signal: ctl.signal });
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function getHtml(path) {
+  const r = await http(`https://www.youtube.com/${path}`, {
+    "User-Agent": UA,
+    "Accept-Language": "en-US,en;q=0.9",
+    Cookie: "CONSENT=YES+cb; SOCS=CAI",
+  });
+  return r.text();
+}
+
+async function getJson(url) {
+  const r = await http(url);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || "api error");
+  return j;
 }
 
 function findChannelId(html) {
@@ -28,47 +37,97 @@ function findChannelId(html) {
     html.match(/<meta itemprop="(?:channelId|identifier)" content="(UC[\w-]{22})"/) ||
     html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/channel\/(UC[\w-]{22})"/) ||
     html.match(/"externalId":"(UC[\w-]{22})"/) ||
-    html.match(/"channelId":"(UC[\w-]{22})"/) ||
-    html.match(/youtube\.com\/channel\/(UC[\w-]{22})/);
+    html.match(/"channelId":"(UC[\w-]{22})"/);
   return m ? m[1] : null;
 }
 
+// Halaman /live: kalau sedang live, isinya halaman video yang berstatus live
+function parseLivePage(html) {
+  const canon = html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/);
+  const vd = html.match(/"videoDetails":\{"videoId":"([\w-]{11})"/);
+  const id = (canon && canon[1]) || (vd && vd[1]);
+  const live =
+    html.includes('"isLiveNow":true') ||
+    /"videoDetails":\{[\s\S]{0,1500}?"isLive":true/.test(html);
+  return id && live ? id : null;
+}
+
+// Tab /streams: cari video yang berlabel LIVE
+function parseStreamsPage(html) {
+  const i = html.search(/"style":"LIVE"|BADGE_STYLE_TYPE_LIVE_NOW/);
+  if (i < 0) return null;
+  const ids = [...html.slice(Math.max(0, i - 4000), i).matchAll(/"videoId":"([\w-]{11})"/g)];
+  return ids.length ? ids[ids.length - 1][1] : null;
+}
+
+// Cara paling akurat: YouTube Data API (butuh YT_API_KEY, hemat kuota ±3 unit)
+async function viaApi(handle, channel) {
+  const base = "https://www.googleapis.com/youtube/v3";
+  let ch = channel;
+  if (!ch) {
+    const r = await getJson(`${base}/channels?part=id&forHandle=${encodeURIComponent("@" + handle)}&key=${KEY}`);
+    ch = r.items && r.items[0] && r.items[0].id;
+  }
+  if (!ch) return null;
+  const pl = await getJson(`${base}/playlistItems?part=contentDetails&playlistId=UU${ch.slice(2)}&maxResults=10&key=${KEY}`);
+  const ids = (pl.items || []).map((i) => i.contentDetails.videoId);
+  let live = null;
+  if (ids.length) {
+    const v = await getJson(`${base}/videos?part=liveStreamingDetails&id=${ids.join(",")}&key=${KEY}`);
+    live = (v.items || []).find((x) => x.liveStreamingDetails && x.liveStreamingDetails.actualStartTime && !x.liveStreamingDetails.actualEndTime);
+  }
+  return { isLive: !!live, videoId: live ? live.id : null, channelId: ch };
+}
+
 module.exports = async (req, res) => {
-  const { handle, channel } = req.query;
+  const { handle, channel, debug } = req.query;
+  const cleanHandle = handle ? String(handle).replace(/^@/, "") : "";
   let path;
   if (channel && /^UC[\w-]{22}$/.test(channel)) path = `channel/${channel}`;
-  else if (handle && /^[\w.\-]{1,60}$/.test(handle)) path = `@${handle.replace(/^@/, "")}`;
+  else if (cleanHandle && /^[\w.\-]{1,60}$/.test(cleanHandle)) path = `@${cleanHandle}`;
   else return res.status(400).json({ error: "handle/channel tidak valid" });
 
-  try {
-    const html = await getHtml(`${path}/live`);
+  const dbg = { hasApiKey: !!KEY };
+  let out = null;
 
-    // Kalau sedang live, halaman /live = halaman video (canonical -> watch?v=ID)
-    const canon = html.match(/<link rel="canonical" href="https:\/\/www\.youtube\.com\/watch\?v=([\w-]{11})"/);
-    const liveNow = html.includes('"isLiveNow":true');
-    const isLive = !!(canon && liveNow);
-
-    let channelId = channel || findChannelId(html);
-
-    // Belum ketemu channelId? ambil dari halaman channel-nya langsung
-    if (!channelId) {
-      try {
-        channelId = findChannelId(await getHtml(path));
-      } catch (e) {}
+  if (KEY) {
+    try {
+      out = await viaApi(cleanHandle, channel);
+      if (out) out.source = "api";
+    } catch (e) {
+      dbg.apiError = String(e.message || e);
     }
-
-    // Jangan di-cache kalau gagal membaca apa pun (mis. diblokir / halaman consent)
-    res.setHeader(
-      "Cache-Control",
-      channelId ? "s-maxage=30, stale-while-revalidate=60" : "no-store"
-    );
-    return res.status(200).json({
-      isLive,
-      videoId: isLive ? canon[1] : null,
-      channelId: channelId || null,
-    });
-  } catch (e) {
-    res.setHeader("Cache-Control", "no-store");
-    return res.status(502).json({ error: "gagal mengambil data YouTube" });
   }
+
+  if (!out) {
+    try {
+      const html = await getHtml(`${path}/live`);
+      dbg.liveHtmlLength = html.length;
+      dbg.consentPage = /consent\.youtube\.com|Before you continue/.test(html);
+      let videoId = parseLivePage(html);
+      let channelId = channel || findChannelId(html);
+      let source = "live-page";
+
+      if (!videoId) {
+        try {
+          const h2 = await getHtml(`${path}/streams`);
+          dbg.streamsHtmlLength = h2.length;
+          videoId = parseStreamsPage(h2);
+          channelId = channelId || findChannelId(h2);
+          if (videoId) source = "streams-page";
+        } catch (e) {}
+      }
+      out = { isLive: !!videoId, videoId: videoId || null, channelId: channelId || null, source };
+    } catch (e) {
+      dbg.scrapeError = String(e.message || e);
+    }
+  }
+
+  if (!out) {
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(502).json({ error: "gagal mengambil data YouTube", ...(debug ? { debug: dbg } : {}) });
+  }
+
+  res.setHeader("Cache-Control", debug || !out.channelId ? "no-store" : "s-maxage=30, stale-while-revalidate=60");
+  return res.status(200).json(debug ? { ...out, debug: dbg } : out);
 };
