@@ -562,6 +562,10 @@
     @media (max-width: 768px) { .search-box input { font-size: 16px; padding: 10px 32px 10px 10px; } .search-box button { font-size: 1.1rem; } }
   
     /* ---- TikTok ---- */
+    .tt-placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 20px; background: #0b0d14; }
+    .tt-placeholder .tt-title { font-weight: 700; font-size: 1.05rem; }
+    .tt-placeholder .tt-note { font-size: 0.78rem; color: var(--text-muted); max-width: 340px; }
+    .tt-placeholder .tt-open { background: #fe2c55; border-color: #fe2c55; color: #fff; font-weight: 700; padding: 10px 18px; }
     .plat-tag { font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-left: 6px; vertical-align: middle; background: #25f4ee; color: #000; }
     .plat-select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border, #333); background: #0f111a; color: inherit; font-family: inherit; }
     .btn-ext { color: inherit; text-decoration: none; font-size: 0.75rem; padding: 2px 8px; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; margin-right: 6px; }
@@ -690,7 +694,11 @@
 
     let role = null, started = false, seeded = false, fbErr = "";
     let groups = [], streamers = [], currentGroup = null, activeStreams = [];
-    const liveStatus = {}, liveVideo = {}, lastCheck = {}, chanCache = {};
+    // TikTok LIVE Embed Player butuh persetujuan TikTok per domain (developers.tiktok.com).
+    // Sebelum disetujui: biarkan false (stream TikTok dibuka lewat jendela popup).
+    // Setelah domain Anda disetujui: ubah menjadi true.
+    const TIKTOK_EMBED = false;
+    const liveStatus = {}, liveVideo = {}, lastCheck = {}, chanCache = {}, playerLive = {};
 
     const $ = id => document.getElementById(id);
     const isAdmin = () => role === "admin";
@@ -1055,6 +1063,8 @@
       if (data && data.isLive && data.videoId) {
         liveVideo[st.id] = data.videoId;
         liveStatus[st.id] = "live";
+      } else if (playerLive[st.id] && Date.now() - playerLive[st.id] < 150000) {
+        liveStatus[st.id] = "live";   // deteksi server gagal, tapi player sedang memutar live
       } else {
         delete liveVideo[st.id];
         liveStatus[st.id] = "ready";
@@ -1238,9 +1248,22 @@
       const s = activeStreams.find(x => x.id === id);
       const card = document.querySelector(`.video-card[data-sid="${id}"]`);
       if (!s || !card) return;
-      const old = card.querySelector("iframe");
+      const old = card.querySelector("iframe, .tt-placeholder");
       if (old) old.remove();
       if (s.platform === "tiktok") {
+        const url = `https://www.tiktok.com/@${encodeURIComponent(s.handle)}/live`;
+        if (!TIKTOK_EMBED && !s.tryEmbed) {
+          const box = document.createElement("div");
+          box.className = "tt-placeholder";
+          box.innerHTML = `<div class="tt-title">@${esc(s.handle)} · TikTok LIVE</div>
+            <div class="tt-note">Embed TikTok LIVE belum diizinkan untuk domain ini, jadi streamnya dibuka di jendela popup.</div>
+            <button class="btn tt-open">▶ Tonton di jendela popup</button>
+            <button class="btn tt-try">Coba embed</button>`;
+          box.querySelector(".tt-open").onclick = () => window.open(url, "tt_" + s.handle, "popup=yes,width=460,height=860");
+          box.querySelector(".tt-try").onclick = () => { s.tryEmbed = true; mountCard(id); };
+          card.appendChild(box);
+          return;
+        }
         const tt = document.createElement("iframe");
         tt.src = `https://www.tiktok.com/embed/live/@${encodeURIComponent(s.handle)}?autoplay=1&muted=1&controls=1&embed_domain=${encodeURIComponent(location.hostname)}`;
         tt.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
@@ -1266,11 +1289,32 @@
         players[id] = rec;
         rec.player = new YT.Player(iframe, { events: {
           onReady: e => { if (s.unmuted) { try { e.target.unMute(); } catch (_) {} } },
-          onStateChange: e => { if (e.data === 0) recover(id); },
+          onStateChange: e => { if (e.data === 0) recover(id); else if (e.data === 1) confirmLive(id, e.target); },
           onError: () => recover(id)
         }});
       };
       if (window.YT && YT.Player) attach(); else ytQueue.push(attach);
+    }
+
+    // Player YouTube tahu kalau videonya live: pakai itu untuk membetulkan status di panel kiri
+    function confirmLive(id, player) {
+      const st = streamers.find(x => x.id === id);
+      if (!st || st.platform === "tiktok") return;
+      let vd;
+      try { vd = player.getVideoData(); } catch (_) { return; }
+      if (!vd || !vd.isLive || !vd.video_id) return;
+      playerLive[id] = Date.now();
+      if (liveStatus[id] !== "live" || liveVideo[id] !== vd.video_id) {
+        liveStatus[id] = "live";
+        liveVideo[id] = vd.video_id;
+        const s = activeStreams.find(x => x.id === id);
+        if (s) {
+          s.title = st.name;
+          const t = document.querySelector(`.video-card[data-sid="${id}"] .video-title`);
+          if (t) t.textContent = st.name;
+        }
+        render();
+      }
     }
 
     // Kalau player berhenti / error / macet, muat ulang otomatis dengan status live terbaru
@@ -1302,6 +1346,7 @@
         try { state = rec.player.getPlayerState(); t = rec.player.getCurrentTime(); } catch (e) { return; }
         const stuck = state === 0 || state === -1 || state === 3 || (state === 1 && Math.abs(t - rec.lastTime) < 0.5);
         rec.lastTime = t;
+        if (state === 1) confirmLive(s.id, rec.player);
         rec.bad = stuck ? rec.bad + 1 : 0;
         if (rec.bad >= 3) recover(s.id);
       });
