@@ -1016,29 +1016,105 @@
     function removeStream(id) { activeStreams = activeStreams.filter(s => s.id !== id); render(); renderGrid(); }
     function clearAllStreams() { activeStreams = []; render(); renderGrid(); }
 
+    // ---------- Grid video + pemantau otomatis (auto-recover) ----------
+    const players = {}, recoverAt = {}, ytQueue = [];
+    window.onYouTubeIframeAPIReady = () => ytQueue.splice(0).forEach(f => f());
+    (() => { const t = document.createElement("script"); t.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(t); })();
+
     function renderGrid() {
       const grid = $("gridContainer");
       const count = activeStreams.length;
       grid.className = `grid-${count}`;
-      if (count === 0) { grid.innerHTML = `<div>Pilih YouTuber di panel kiri atau paste link live di bagian atas.</div>`; return; }
-      grid.innerHTML = "";
+      if (count === 0) {
+        Object.keys(players).forEach(k => delete players[k]);
+        grid.innerHTML = `<div>Pilih YouTuber di panel kiri atau paste link live di bagian atas.</div>`;
+        return;
+      }
+      // Hapus kartu yang sudah tidak aktif; kartu lain TIDAK dimuat ulang
+      [...grid.children].forEach(c => {
+        if (!c.dataset.sid || !activeStreams.some(s => s.id === c.dataset.sid)) {
+          if (c.dataset.sid) delete players[c.dataset.sid];
+          c.remove();
+        }
+      });
       activeStreams.forEach(stream => {
-        const embedUrl = stream.videoId
-          ? `https://www.youtube-nocookie.com/embed/${stream.videoId}?autoplay=1&mute=1&playsinline=1`
-          : `https://www.youtube-nocookie.com/embed/live_stream?channel=${stream.channelId}&autoplay=1&mute=1&playsinline=1`;
+        if (grid.querySelector(`[data-sid="${stream.id}"]`)) return;
         const card = document.createElement("div");
         card.className = "video-card";
+        card.dataset.sid = stream.id;
         card.innerHTML = `
           <div class="video-card-header">
             <span class="video-title">${esc(stream.title)}</span>
             <button class="btn-close" onclick="removeStream('${stream.id}')" title="Close">✕</button>
-          </div>
-          <iframe src="${embedUrl}"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+          </div>`;
         grid.appendChild(card);
+        mountCard(stream.id);
       });
     }
+
+    function mountCard(id) {
+      const s = activeStreams.find(x => x.id === id);
+      const card = document.querySelector(`.video-card[data-sid="${id}"]`);
+      if (!s || !card) return;
+      const old = card.querySelector("iframe");
+      if (old) old.remove();
+      const base = s.videoId
+        ? `https://www.youtube.com/embed/${s.videoId}?`
+        : `https://www.youtube.com/embed/live_stream?channel=${s.channelId}&`;
+      const iframe = document.createElement("iframe");
+      iframe.src = base + `autoplay=1&mute=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
+      iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
+      iframe.referrerPolicy = "strict-origin-when-cross-origin";
+      iframe.allowFullscreen = true;
+      card.appendChild(iframe);
+      const title = card.querySelector(".video-title");
+      if (title) title.textContent = s.title;
+
+      const attach = () => {
+        const rec = { player: null, lastTime: -1, bad: 0, recovering: false };
+        players[id] = rec;
+        rec.player = new YT.Player(iframe, { events: {
+          onReady: e => { if (s.unmuted) { try { e.target.unMute(); } catch (_) {} } },
+          onStateChange: e => { if (e.data === 0) recover(id); },
+          onError: () => recover(id)
+        }});
+      };
+      if (window.YT && YT.Player) attach(); else ytQueue.push(attach);
+    }
+
+    // Kalau player berhenti / error / macet, muat ulang otomatis dengan status live terbaru
+    async function recover(id) {
+      const rec = players[id], s = activeStreams.find(x => x.id === id);
+      if (!rec || !s || rec.recovering || Date.now() - (recoverAt[id] || 0) < 20000) return;
+      if (id.startsWith("custom_") && (s.retries = (s.retries || 0) + 1) > 5) return;
+      rec.recovering = true;
+      recoverAt[id] = Date.now();
+      try { s.unmuted = !rec.player.isMuted(); } catch (_) {}
+      const st = streamers.find(x => x.id === id);
+      if (st) {
+        await refreshStreamer(st);
+        render();
+        if (liveVideo[id]) { s.videoId = liveVideo[id]; s.channelId = null; s.title = st.name; }
+        else if (chanOf(st)) {
+          if (!s.videoId) { rec.recovering = false; return; }   // memang belum live: jangan reload terus
+          s.videoId = null; s.channelId = chanOf(st); s.title = st.name + " (menunggu live)";
+        }
+      }
+      if (activeStreams.some(x => x.id === id)) mountCard(id);
+    }
+
+    setInterval(() => {
+      activeStreams.forEach(s => {
+        const rec = players[s.id];
+        if (!rec || !rec.player || !rec.player.getPlayerState) return;
+        let state, t;
+        try { state = rec.player.getPlayerState(); t = rec.player.getCurrentTime(); } catch (e) { return; }
+        const stuck = state === 0 || state === -1 || state === 3 || (state === 1 && Math.abs(t - rec.lastTime) < 0.5);
+        rec.lastTime = t;
+        rec.bad = stuck ? rec.bad + 1 : 0;
+        if (rec.bad >= 3) recover(s.id);
+      });
+    }, 15000);
   </script>
 </body>
 </html>
