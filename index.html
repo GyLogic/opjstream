@@ -475,11 +475,20 @@
     .tab:hover { color: #fff; }
     .tab.active { background: var(--bg-card-active); color: #fff; border-color: var(--accent-gold); }
     .tab-live { background: var(--accent-red); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 0.68rem; }
-    .streamer-item.live { border-color: rgba(255, 51, 75, 0.45); }
     .streamer-item.live .streamer-avatar { box-shadow: 0 0 0 2px var(--accent-red); }
     .live-pill { background: var(--accent-red); color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 3px; animation: pulse 1.6s infinite; }
     @keyframes pulse { 50% { opacity: 0.55; } }
     .list-empty { color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px 10px; }
+    .btn-edit-streamer { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--accent-gold); color: var(--accent-gold); width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; margin-left: 4px; }
+    .btn-edit-streamer:hover { background: var(--accent-gold); color: #000; }
+    .edit-card { text-align: left; max-width: 420px; max-height: 90vh; overflow-y: auto; }
+    .edit-card input[type=text] { text-align: left; }
+    .edit-card input[type=checkbox] { width: auto; margin: 0; }
+    .edit-card .f { display: block; font-size: 0.75rem; color: var(--text-muted); margin: 6px 0 4px; }
+    .edit-groups { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; margin-bottom: 14px; }
+    .edit-groups label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 4px 0; cursor: pointer; }
+    .edit-actions { display: flex; gap: 8px; }
+    .edit-actions .btn { flex: 1; }
   </style>
 </head>
 <body>
@@ -492,6 +501,25 @@
       <input type="password" id="passwordInput" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter') verifyLogin()" />
       <button class="login-btn" onclick="verifyLogin()">Masuk</button>
       <div class="login-error" id="loginError"></div>
+    </div>
+  </div>
+
+  <!-- Modal Edit YouTuber (admin) -->
+  <div class="login-overlay" id="editOverlay" style="display: none;">
+    <div class="login-card edit-card">
+      <h2 style="margin-bottom: 14px;">Edit YouTuber</h2>
+      <label class="f">Nama</label>
+      <input type="text" id="editName" />
+      <label class="f">Handle (@nama) / Link Channel / Link Live</label>
+      <input type="text" id="editHandle" />
+      <label class="f">Link Foto Profil</label>
+      <input type="text" id="editAvatar" />
+      <label class="f">Kelompok (boleh lebih dari satu)</label>
+      <div class="edit-groups" id="editGroups"></div>
+      <div class="edit-actions">
+        <button class="btn" onclick="closeEdit()">Batal</button>
+        <button class="login-btn" onclick="saveEdit()">Simpan</button>
+      </div>
     </div>
   </div>
 
@@ -526,6 +554,7 @@
       <div id="tabs" class="tabs"></div>
       <div class="group-actions admin-only">
         <button class="btn" onclick="addGroup()">+ Grup</button>
+        <button class="btn" onclick="renameGroup()">Ubah Nama</button>
         <button class="btn btn-danger" onclick="deleteGroup()">Hapus Grup</button>
       </div>
 
@@ -579,6 +608,7 @@
     const $ = id => document.getElementById(id);
     const isAdmin = () => role === "admin";
     const chanOf = s => s.channelId || chanCache[s.id] || null;
+    const gidsOf = s => s.groupIds || (s.group ? [s.group] : []);   // 1 YouTuber bisa di banyak kelompok
     const avatarFor = n => `https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&background=252836&color=fff`;
     const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -652,7 +682,7 @@
       const t = Date.now();
       const opj = await db.collection("groups").add({ name: "OPJ", createdAt: t });
       await db.collection("groups").add({ name: "Nakama", createdAt: t + 1 });
-      const base = { channelId: null, staticVideoId: null, group: opj.id };
+      const base = { channelId: null, staticVideoId: null, groupIds: [opj.id] };
       await db.collection("streamers").add({ ...base, name: "Juki", handle: "juki33", avatar: avatarFor("Juki"), createdAt: t });
       await db.collection("streamers").add({ ...base, name: "Ncang Pitung", handle: "Ncangpitung", avatar: avatarFor("Ncang Pitung"), createdAt: t + 1 });
     }
@@ -672,14 +702,30 @@
       } catch (e) { alert("Gagal menyimpan: " + e.message); }
     }
 
+    async function renameGroup() {
+      const g = groups.find(x => x.id === currentGroup);
+      if (!isAdmin() || !g) return;
+      const name = (prompt("Nama baru untuk kelompok:", g.name) || "").trim();
+      if (!name || name === g.name) return;
+      if (groups.some(x => x.id !== g.id && x.name.toLowerCase() === name.toLowerCase())) { alert("Nama kelompok sudah dipakai."); return; }
+      try { await db.collection("groups").doc(g.id).update({ name }); }
+      catch (e) { alert("Gagal mengubah nama: " + e.message); }
+    }
+
     async function deleteGroup() {
       if (!isAdmin() || !currentGroup) return;
       const g = groups.find(x => x.id === currentGroup);
-      const members = streamers.filter(s => s.group === currentGroup);
-      if (!confirm(`Hapus kelompok "${g.name}" beserta ${members.length} YouTuber di dalamnya?`)) return;
+      const members = streamers.filter(s => gidsOf(s).includes(currentGroup));
+      const only = members.filter(s => gidsOf(s).length === 1);
+      const shared = members.filter(s => gidsOf(s).length > 1);
+      let msg = `Hapus kelompok "${g.name}"?`;
+      if (only.length) msg += `\n${only.length} YouTuber yang hanya ada di kelompok ini ikut terhapus.`;
+      if (shared.length) msg += `\n${shared.length} YouTuber lain tetap ada di kelompoknya yang lain.`;
+      if (!confirm(msg)) return;
       try {
         const batch = db.batch();
-        members.forEach(m => batch.delete(db.collection("streamers").doc(m.id)));
+        only.forEach(m => batch.delete(db.collection("streamers").doc(m.id)));
+        shared.forEach(m => batch.update(db.collection("streamers").doc(m.id), { groupIds: firebase.firestore.FieldValue.arrayRemove(g.id) }));
         batch.delete(db.collection("groups").doc(g.id));
         await batch.commit();
       } catch (e) { alert("Gagal menghapus: " + e.message); }
@@ -693,18 +739,12 @@
       if (f.style.display === "flex") $("newStreamerHandle").focus();
     }
 
-    async function addStreamer() {
-      if (!isAdmin() || !currentGroup) return;
-      let name = $("newStreamerName").value.trim();
-      const inputVal = $("newStreamerHandle").value.trim();
-      if (!inputVal) { alert("Handle / Link channel wajib diisi!"); return; }
-
+    function parseHandleInput(inputVal) {
       let handle = "", staticVideoId = null;
       const vid = extractVideoId(inputVal);
       if (vid && /youtu\.?be/.test(inputVal)) staticVideoId = vid;
       const chMatch = inputVal.match(/(UC[a-zA-Z0-9_-]{22})/);
       const channelId = chMatch ? chMatch[1] : null;
-
       if (inputVal.includes("@")) {
         handle = inputVal.split("@")[1].split(/[\/?#]/)[0];
       } else if (inputVal.includes("youtube.com/")) {
@@ -714,28 +754,87 @@
       } else if (!channelId && !staticVideoId) {
         handle = inputVal.replace(/\s+/g, "");
       }
+      return { handle, channelId, staticVideoId };
+    }
 
-      const dup = streamers.find(x =>
-        (handle && x.handle && x.handle.toLowerCase() === handle.toLowerCase()) ||
-        (channelId && x.channelId === channelId));
-      if (dup) { alert(`"${dup.name}" sudah terdaftar.`); return; }
+    function findDuplicate(p, exceptId) {
+      return streamers.find(x => x.id !== exceptId &&
+        ((p.handle && x.handle && x.handle.toLowerCase() === p.handle.toLowerCase()) ||
+         (p.channelId && x.channelId === p.channelId)));
+    }
 
-      if (!name) name = handle || channelId || "YouTuber";
+    async function addStreamer() {
+      if (!isAdmin() || !currentGroup) return;
+      let name = $("newStreamerName").value.trim();
+      const inputVal = $("newStreamerHandle").value.trim();
+      if (!inputVal) { alert("Handle / Link channel wajib diisi!"); return; }
+      const p = parseHandleInput(inputVal);
+      const dup = findDuplicate(p);
+      if (dup) { alert(`"${dup.name}" sudah terdaftar. Untuk memasukkannya ke kelompok lain, klik tombol ✎ pada namanya.`); return; }
+      if (!name) name = p.handle || p.channelId || "YouTuber";
       const avatar = $("newStreamerAvatar").value.trim() || avatarFor(name);
       try {
-        await db.collection("streamers").add({
-          group: currentGroup, name, handle, channelId, staticVideoId, avatar, createdAt: Date.now()
-        });
+        await db.collection("streamers").add({ ...p, name, avatar, groupIds: [currentGroup], createdAt: Date.now() });
         ["newStreamerName", "newStreamerHandle", "newStreamerAvatar"].forEach(i => $(i).value = "");
         $("adminForm").style.display = "none";
       } catch (e) { alert("Gagal menyimpan (cek Rules Firestore & login admin): " + e.message); }
+    }
+
+    // ---------- Edit YouTuber: nama, handle, foto, kelompok (pindah / banyak kelompok) ----------
+    let editingId = null;
+
+    function openEdit(id) {
+      const st = streamers.find(s => s.id === id);
+      if (!isAdmin() || !st) return;
+      editingId = id;
+      const shown = st.handle ? "@" + st.handle : (st.channelId || (st.staticVideoId ? "https://youtu.be/" + st.staticVideoId : ""));
+      $("editName").value = st.name;
+      $("editHandle").value = shown;
+      $("editHandle").dataset.orig = shown;
+      $("editAvatar").value = st.avatar || "";
+      const cur = gidsOf(st);
+      $("editGroups").innerHTML = groups.map(g =>
+        `<label><input type="checkbox" value="${g.id}" ${cur.includes(g.id) ? "checked" : ""}> ${esc(g.name)}</label>`).join("");
+      $("editOverlay").style.display = "flex";
+    }
+
+    function closeEdit() { $("editOverlay").style.display = "none"; editingId = null; }
+
+    async function saveEdit() {
+      const st = streamers.find(s => s.id === editingId);
+      if (!isAdmin() || !st) return closeEdit();
+      const name = $("editName").value.trim();
+      if (!name) { alert("Nama tidak boleh kosong!"); return; }
+      const gids = [...document.querySelectorAll("#editGroups input:checked")].map(i => i.value);
+      if (!gids.length) { alert("Pilih minimal satu kelompok!"); return; }
+
+      const data = {
+        name,
+        avatar: $("editAvatar").value.trim() || avatarFor(name),
+        groupIds: gids,
+        group: firebase.firestore.FieldValue.delete()
+      };
+      const input = $("editHandle").value.trim();
+      if (input !== $("editHandle").dataset.orig) {
+        if (!input) { alert("Handle / Link channel wajib diisi!"); return; }
+        const p = parseHandleInput(input);
+        const dup = findDuplicate(p, st.id);
+        if (dup) { alert(`"${dup.name}" sudah memakai handle / channel tersebut.`); return; }
+        Object.assign(data, p);
+        delete chanCache[st.id];
+        delete lastCheck[st.id];   // paksa cek ulang status live
+      }
+      try {
+        await db.collection("streamers").doc(st.id).update(data);
+        closeEdit();
+      } catch (e) { alert("Gagal menyimpan: " + e.message); }
     }
 
     async function deleteStreamer(id, ev) {
       ev.stopPropagation();
       if (!isAdmin()) return;
       const t = streamers.find(s => s.id === id);
-      if (!confirm(`Hapus permanen "${t ? t.name : ""}" dari daftar?`)) return;
+      if (!confirm(`Hapus permanen "${t ? t.name : ""}"${t && gidsOf(t).length > 1 ? " dari SEMUA kelompok" : ""}?`)) return;
       try { await db.collection("streamers").doc(id).delete(); }
       catch (e) { alert("Gagal menghapus: " + e.message); }
     }
@@ -811,7 +910,7 @@
     // ---------- Render panel kiri ----------
     function render() {
       $("tabs").innerHTML = groups.map(g => {
-        const n = streamers.filter(s => s.group === g.id && liveStatus[s.id] === "live").length;
+        const n = streamers.filter(s => gidsOf(s).includes(g.id) && liveStatus[s.id] === "live").length;
         return `<button class="tab ${g.id === currentGroup ? "active" : ""}" onclick="selectGroup('${g.id}')">${esc(g.name)}${n ? `<span class="tab-live">${n} LIVE</span>` : ""}</button>`;
       }).join("");
 
@@ -824,7 +923,7 @@
       if (!groups.length) { listEl.innerHTML = `<div class="list-empty">${isAdmin() ? "Belum ada kelompok. Klik + Grup." : "Belum ada data."}</div>`; return; }
 
       // Yang sedang LIVE dinaikkan ke paling atas
-      const list = streamers.filter(s => s.group === currentGroup).sort((a, b) =>
+      const list = streamers.filter(s => gidsOf(s).includes(currentGroup)).sort((a, b) =>
         (liveStatus[b.id] === "live") - (liveStatus[a.id] === "live") || a.createdAt - b.createdAt);
       if (!list.length) listEl.innerHTML = `<div class="list-empty">Belum ada YouTuber di kelompok ini.</div>`;
 
@@ -845,7 +944,9 @@
             <div class="streamer-name">${esc(st.name)}</div>
             <div class="streamer-status ${status === "live" ? "live" : ""}">${statusHtml}</div>
           </div>
-          ${isAdmin() ? `<button class="btn-delete-streamer" title="Hapus YouTuber">✕</button>` : ""}`;
+          ${isAdmin() ? `<button class="btn-edit-streamer" title="Edit YouTuber">✎</button><button class="btn-delete-streamer" title="Hapus YouTuber">✕</button>` : ""}`;
+        const ed = card.querySelector(".btn-edit-streamer");
+        if (ed) ed.onclick = ev => { ev.stopPropagation(); openEdit(st.id); };
         const del = card.querySelector(".btn-delete-streamer");
         if (del) del.onclick = ev => deleteStreamer(st.id, ev);
         listEl.appendChild(card);
