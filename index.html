@@ -638,13 +638,17 @@
       return null;
     }
 
+    function withDeadline(promise, ms) {
+      return Promise.race([promise, new Promise(resolve => setTimeout(() => resolve(null), ms))]);
+    }
+
     async function fetchLiveInfo(streamer) {
       if (!streamer.handle && !streamer.channelId) return null;
       try {
         const q = streamer.channelId
           ? `channel=${encodeURIComponent(streamer.channelId)}`
           : `handle=${encodeURIComponent(streamer.handle)}`;
-        const resp = await fetchWithTimeout(`/api/live?${q}`, { timeout: 10000 });
+        const resp = await fetchWithTimeout(`/api/live?${q}`, { timeout: 9000 });
         if (resp.ok) {
           const d = await resp.json();
           if (d && !d.error) return d;
@@ -654,7 +658,11 @@
     }
 
     async function refreshStreamer(streamer) {
-      const data = await fetchLiveInfo(streamer);
+      let data = null;
+      try {
+        // batas keras 14 detik -> status PASTI berubah, tidak stuck "Checking..."
+        data = await withDeadline(fetchLiveInfo(streamer), 14000);
+      } catch (e) {}
       streamerLastCheck[streamer.id] = Date.now();
       if (data && data.channelId && !streamer.channelId) {
         streamer.channelId = data.channelId;
@@ -668,6 +676,8 @@
         streamerLiveStatus[streamer.id] = "ready";
       }
     }
+
+    function esc(t) { return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
     function renderSidebar() {
       const listEl = document.getElementById("streamerList");
@@ -695,9 +705,9 @@
         }
 
         card.innerHTML = `
-          <img src="${streamer.avatar || 'https://via.placeholder.com/40'}" alt="${streamer.name}" class="streamer-avatar" onerror="this.src='https://via.placeholder.com/40'" />
+          <img src="${streamer.avatar || 'https://via.placeholder.com/40'}" alt="${esc(streamer.name)}" class="streamer-avatar" onerror="this.src='https://via.placeholder.com/40'" />
           <div class="streamer-info">
-            <div class="streamer-name">${streamer.name}</div>
+            <div class="streamer-name">${esc(streamer.name)}</div>
             <div class="streamer-status ${isLiveClass}">
               <span class="status-dot"></span>
               <span>${statusText}</span>
@@ -726,9 +736,10 @@
         return;
       }
 
-      // Cek status live terbaru (cache dianggap valid 60 detik)
       const fresh = streamerLastCheck[streamer.id] && Date.now() - streamerLastCheck[streamer.id] < 60000;
-      if (!(fresh && streamerCurrentVideoId[streamer.id])) {
+      // Kalau channelId sudah diketahui, tidak perlu menunggu: embed channel
+      // otomatis memutar livestream yang sedang berjalan.
+      if (!streamer.channelId && !(fresh && streamerCurrentVideoId[streamer.id])) {
         streamerLiveStatus[streamer.id] = "checking";
         renderSidebar();
         await refreshStreamer(streamer);
@@ -738,7 +749,6 @@
 
       let videoId = streamerCurrentVideoId[streamer.id] || null;
       let channelId = null;
-      // Tidak live: pakai embed channel (otomatis play begitu live), lalu video statis
       if (!videoId && streamer.channelId) channelId = streamer.channelId;
       if (!videoId && !channelId) videoId = streamer.staticVideoId || null;
 
@@ -909,7 +919,7 @@
         card.className = "video-card";
         card.innerHTML = `
           <div class="video-card-header">
-            <span class="video-title">${stream.title}</span>
+            <span class="video-title">${esc(stream.title)}</span>
             <button class="btn-close" onclick="removeStream('${stream.id}')" title="Close">✕</button>
           </div>
           <iframe 
