@@ -2,13 +2,43 @@
 // GET /api/live?handle=NamaHandle  atau  /api/live?channel=UCxxxxxxxxxxxxxxxxxxxxxx
 // Tambahkan &debug=1 untuk melihat detail diagnosa.
 // TikTok: /api/live?platform=tiktok&handle=username  (deteksi live bersifat best-effort)
-// Opsional (paling akurat): set Environment Variable YT_API_KEY di Vercel.
+// Opsional (paling akurat): set Environment Variable YT_API_KEYS (beberapa key dipisah koma) di Vercel.
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
-const KEY = process.env.YT_API_KEY;
 
-// Kalau kuota API habis, jangan coba API lagi untuk sementara (hemat waktu, langsung scraping)
-let apiBlockedUntil = 0;
+// ---------- Multi API key (otomatis pindah kalau kuota habis) ----------
+// Isi Environment Variable di Vercel (pilih salah satu cara):
+//   YT_API_KEYS = key1,key2,key3          (dipisah koma)
+//   atau YT_API_KEY, YT_API_KEY_2, YT_API_KEY_3 ... (satu per variabel)
+const KEYS = [
+  ...String(process.env.YT_API_KEYS || "").split(/[\s,;]+/),
+  process.env.YT_API_KEY,
+  process.env.YT_API_KEY_2,
+  process.env.YT_API_KEY_3,
+  process.env.YT_API_KEY_4,
+  process.env.YT_API_KEY_5,
+]
+  .map((k) => (k || "").trim())
+  .filter((k, i, a) => k && a.indexOf(k) === i);
+
+// Status tiap key: kapan boleh dipakai lagi. Tersimpan di memori instance (reset kalau instance restart, tidak masalah).
+const keyBlockedUntil = new Map();
+// Cache handle -> channelId supaya hemat 1 unit kuota per pengecekan
+const channelCache = new Map();
+
+// Kuota YouTube reset tiap tengah malam Pacific Time
+function nextQuotaReset() {
+  const now = new Date();
+  const pt = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
+  const midnight = new Date(pt);
+  midnight.setHours(24, 0, 0, 0);
+  return Date.now() + (midnight - pt) + 60 * 1000;
+}
+
+function availableKeys() {
+  const now = Date.now();
+  return KEYS.map((key, i) => ({ key, i })).filter(({ key }) => (keyBlockedUntil.get(key) || 0) <= now);
+}
 
 async function http(url, headers = {}) {
   const ctl = new AbortController();
@@ -32,7 +62,11 @@ async function getHtml(path) {
 async function getJson(url) {
   const r = await http(url);
   const j = await r.json();
-  if (j.error) throw new Error(j.error.message || "api error");
+  if (j.error) {
+    const err = new Error(j.error.message || "api error");
+    err.reason = (j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || j.error.status || "";
+    throw err;
+  }
   return j;
 }
 
@@ -75,23 +109,51 @@ async function viaRss(channelId, dbg) {
   return hit ? hit.id : null;
 }
 
-// Cara paling akurat: YouTube Data API (butuh YT_API_KEY, hemat kuota ±3 unit)
-async function viaApi(handle, channel) {
+// Cara paling akurat: YouTube Data API (±3 unit per cek, ±2 kalau channelId sudah di-cache)
+async function viaApiWithKey(key, handle, channel) {
   const base = "https://www.googleapis.com/youtube/v3";
-  let ch = channel;
+  let ch = channel || channelCache.get(handle);
   if (!ch) {
-    const r = await getJson(`${base}/channels?part=id&forHandle=${encodeURIComponent("@" + handle)}&key=${KEY}`);
+    const r = await getJson(`${base}/channels?part=id&forHandle=${encodeURIComponent("@" + handle)}&key=${key}`);
     ch = r.items && r.items[0] && r.items[0].id;
+    if (ch) channelCache.set(handle, ch);
   }
   if (!ch) return null;
-  const pl = await getJson(`${base}/playlistItems?part=contentDetails&playlistId=UU${ch.slice(2)}&maxResults=10&key=${KEY}`);
+  const pl = await getJson(`${base}/playlistItems?part=contentDetails&playlistId=UU${ch.slice(2)}&maxResults=10&key=${key}`);
   const ids = (pl.items || []).map((i) => i.contentDetails.videoId);
   let live = null;
   if (ids.length) {
-    const v = await getJson(`${base}/videos?part=liveStreamingDetails&id=${ids.join(",")}&key=${KEY}`);
+    const v = await getJson(`${base}/videos?part=liveStreamingDetails&id=${ids.join(",")}&key=${key}`);
     live = (v.items || []).find((x) => x.liveStreamingDetails && x.liveStreamingDetails.actualStartTime && !x.liveStreamingDetails.actualEndTime);
   }
   return { isLive: !!live, videoId: live ? live.id : null, channelId: ch };
+}
+
+// Coba key satu per satu; key yang kuotanya habis ditandai lalu otomatis pindah ke key berikutnya
+async function viaApi(handle, channel, dbg) {
+  dbg.keys = { total: KEYS.length, available: availableKeys().length, tried: [] };
+  for (const { key, i } of availableKeys()) {
+    try {
+      const out = await viaApiWithKey(key, handle, channel);
+      dbg.keys.tried.push({ key: i + 1, ok: true });
+      if (out) out.keyUsed = i + 1;
+      return out;
+    } catch (e) {
+      const msg = String(e.message || e);
+      const reason = String(e.reason || "");
+      if (/quota|rateLimit/i.test(reason + " " + msg)) {
+        keyBlockedUntil.set(key, nextQuotaReset());
+        dbg.keys.tried.push({ key: i + 1, error: "kuota habis -> pindah key" });
+      } else if (/keyInvalid|API key not valid|accessNotConfigured|has not been used|disabled|ipRefererBlocked|forbidden/i.test(reason + " " + msg)) {
+        keyBlockedUntil.set(key, Date.now() + 60 * 60 * 1000); // key bermasalah: lewati 1 jam
+        dbg.keys.tried.push({ key: i + 1, error: "key tidak valid / API belum diaktifkan: " + msg.slice(0, 120) });
+      } else {
+        dbg.keys.tried.push({ key: i + 1, error: msg.slice(0, 120) });
+        throw e; // error lain (jaringan, dll): jangan habiskan key lain, biar jatuh ke scraping
+      }
+    }
+  }
+  return null; // semua key habis -> pemanggil memakai scraping
 }
 
 
@@ -149,17 +211,16 @@ module.exports = async (req, res) => {
   else if (cleanHandle && /^[\w.\-]{1,60}$/.test(cleanHandle)) path = `@${cleanHandle}`;
   else return res.status(400).json({ error: "handle/channel tidak valid" });
 
-  const dbg = { hasApiKey: !!KEY };
+  const dbg = { hasApiKey: KEYS.length > 0, apiKeys: KEYS.length };
   let out = null;
 
-  if (KEY && Date.now() < apiBlockedUntil) dbg.apiSkipped = "kuota habis, memakai scraping";
-  if (KEY && Date.now() >= apiBlockedUntil) {
+  if (KEYS.length && availableKeys().length === 0) dbg.apiSkipped = "semua key kuotanya habis, memakai scraping";
+  if (KEYS.length && availableKeys().length > 0) {
     try {
-      out = await viaApi(cleanHandle, channel);
+      out = await viaApi(cleanHandle, channel, dbg);
       if (out) out.source = "api";
     } catch (e) {
       dbg.apiError = String(e.message || e);
-      if (/quota/i.test(dbg.apiError)) apiBlockedUntil = Date.now() + 30 * 60 * 1000;
     }
   }
 
