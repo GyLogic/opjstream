@@ -2,8 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#13141a" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Multi-Stream Dashboard</title>
   <style>
@@ -32,7 +31,6 @@
       background-color: var(--bg-main);
       color: var(--text-main);
       height: 100vh;
-      height: 100dvh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -348,6 +346,7 @@
     }
 
     .btn-delete-streamer {
+      display: none;
       background: rgba(255, 51, 75, 0.2);
       border: 1px solid var(--accent-red);
       color: var(--accent-red);
@@ -362,20 +361,7 @@
     }
 
     .btn-delete-streamer:hover { background: var(--accent-red); color: #fff; }
-    .btn-delete-streamer { display: flex; }
-
-    .btn-add-toggle {
-      margin: 10px 10px 0;
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px dashed var(--accent-gold);
-      color: var(--accent-gold);
-      border-radius: 6px;
-      padding: 8px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .btn-add-toggle:hover { background: rgba(245, 158, 11, 0.22); }
+    .is-admin .btn-delete-streamer { display: flex; }
 
     .sidebar-footer {
       padding: 10px;
@@ -466,110 +452,6 @@
       border: none;
       flex: 1;
     }
-
-    .admin-only { display: none; }
-    .is-admin .admin-only { display: block; }
-    .is-admin .group-actions { display: flex; }
-    .group-actions { gap: 6px; padding: 0 10px 8px; }
-    .group-actions .btn { padding: 4px 10px; font-size: 0.72rem; }
-    .tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 10px 8px; }
-    .tab { background: var(--bg-card); color: var(--text-muted); border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 12px; font-size: 0.78rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; }
-    .tab:hover { color: #fff; }
-    .tab.active { background: var(--bg-card-active); color: #fff; border-color: var(--accent-gold); }
-    .tab-live { background: var(--accent-red); color: #fff; border-radius: 10px; padding: 0 6px; font-size: 0.68rem; }
-    .streamer-item.live .streamer-avatar { box-shadow: 0 0 0 2px var(--accent-red); }
-    .live-pill { background: var(--accent-red); color: #fff; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.5px; padding: 1px 6px; border-radius: 3px; animation: pulse 1.6s infinite; }
-    @keyframes pulse { 50% { opacity: 0.55; } }
-    .list-empty { color: var(--text-muted); font-size: 0.8rem; text-align: center; padding: 20px 10px; }
-    .btn-edit-streamer { background: rgba(245, 158, 11, 0.15); border: 1px solid var(--accent-gold); color: var(--accent-gold); width: 22px; height: 22px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.75rem; margin-left: 4px; }
-    .btn-edit-streamer:hover { background: var(--accent-gold); color: #000; }
-    .edit-card { text-align: left; max-width: 420px; max-height: 90vh; overflow-y: auto; }
-    .edit-card input[type=text] { text-align: left; }
-    .edit-card input[type=checkbox] { width: auto; margin: 0; }
-    .edit-card .f { display: block; font-size: 0.75rem; color: var(--text-muted); margin: 6px 0 4px; }
-    .edit-groups { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 10px; margin-bottom: 14px; }
-    .edit-groups label { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; padding: 4px 0; cursor: pointer; }
-    .edit-actions { display: flex; gap: 8px; }
-    .edit-actions .btn { flex: 1; }
-
-    .sidebar-toggle { display: none; }
-
-    /* ===== HP (portrait): video di atas, panel streamer di bawah ===== */
-    @media (max-width: 768px) {
-      header { height: auto; flex-wrap: wrap; padding: 8px 10px; gap: 8px; padding-top: max(8px, env(safe-area-inset-top)); }
-      .brand-title { font-size: 1rem; order: 1; flex-wrap: wrap; }
-      .header-actions { order: 2; margin-left: auto; gap: 6px; }
-      .custom-link-container { order: 3; max-width: none; flex: 1 1 100%; }
-      .btn { padding: 9px 12px; font-size: 0.82rem; }
-      .custom-link-container input, .admin-form input, .login-card input { font-size: 16px; }  /* cegah auto-zoom iOS */
-      .custom-link-container input { padding: 9px 12px; }
-
-      .main-wrapper { flex-direction: column-reverse; }
-      aside { width: 100%; height: 42dvh; border-right: none; border-top: 1px solid var(--border-color); overflow-y: auto; padding-bottom: env(safe-area-inset-bottom); }
-      aside.collapsed { height: auto; overflow: hidden; }
-      aside.collapsed > *:not(.sidebar-header) { display: none !important; }
-      .sidebar-header { position: sticky; top: 0; background: var(--bg-sidebar); z-index: 5; }
-      .sidebar-header .btn { padding: 6px 12px !important; font-size: 0.78rem !important; }
-      .sidebar-toggle { display: inline-block; }
-
-      .tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-      .tabs::-webkit-scrollbar { display: none; }
-      .tab { flex-shrink: 0; padding: 8px 14px; font-size: 0.85rem; }
-      .group-actions { overflow-x: auto; }
-      .group-actions .btn { padding: 7px 12px; font-size: 0.78rem; flex-shrink: 0; }
-      .btn-add-toggle { padding: 10px; font-size: 0.85rem; }
-      .admin-form input { padding: 10px; }
-      .admin-form button { padding: 10px; font-size: 0.9rem; }
-
-      .streamer-list { flex: none; overflow: visible; }
-      .streamer-item { padding: 10px; }
-      .streamer-avatar { width: 40px; height: 40px; }
-      .streamer-name { font-size: 0.95rem; }
-      .streamer-status { font-size: 0.78rem; }
-      .btn-edit-streamer, .btn-delete-streamer { width: 34px; height: 34px; font-size: 0.9rem; margin-left: 6px; }
-      .sidebar-footer { display: none; }
-
-      /* Video ditumpuk ke bawah, masing-masing 16:9 selebar layar */
-      #gridContainer { padding: 8px; gap: 8px; grid-template-columns: 1fr; grid-template-rows: none; grid-auto-rows: auto; align-content: start; }
-      #gridContainer.grid-0 { display: flex; height: auto; min-height: 110px; text-align: center; font-size: 0.9rem; padding: 20px; }
-      .video-card { aspect-ratio: 16 / 9; min-height: 0; }
-      .video-title { font-size: 0.78rem; }
-      .video-card-header .btn-close { width: 32px; height: 32px; font-size: 0.9rem; }
-
-      .login-overlay { padding: 12px; }
-      .login-card { padding: 24px 18px; }
-      .edit-card { max-height: 92dvh; }
-    }
-
-    /* ===== HP landscape: tata letak desktop yang dipadatkan ===== */
-    @media (max-height: 520px) and (orientation: landscape) {
-      header { height: 44px; padding: 0 10px; gap: 8px; }
-      .brand-title { font-size: 0.9rem; }
-      .custom-link-container { max-width: 300px; }
-      .custom-link-container input { padding: 5px 10px; font-size: 0.8rem; }
-      .btn { padding: 5px 10px; font-size: 0.78rem; }
-      aside { width: 230px; }
-      #gridContainer { padding: 6px; gap: 6px; }
-      .video-card { min-height: 0; }
-      .login-card { max-height: 94dvh; overflow-y: auto; padding: 16px; }
-    }
-    .search-box { position: relative; padding: 0 10px 8px; }
-    .search-box input { width: 100%; background: var(--bg-card); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; padding: 8px 30px 8px 10px; font-size: 0.82rem; outline: none; }
-    .search-box input:focus { border-color: #556285; }
-    .search-box button { position: absolute; right: 16px; top: 50%; transform: translateY(-62%); display: none; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95rem; }
-    .grp-tag { color: var(--text-muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-    .dup-tag { background: rgba(245, 158, 11, 0.18); color: var(--accent-gold); border: 1px solid var(--accent-gold); border-radius: 3px; padding: 0 5px; font-size: 0.62rem; font-weight: 700; white-space: nowrap; }
-    @media (max-width: 768px) { .search-box input { font-size: 16px; padding: 10px 32px 10px 10px; } .search-box button { font-size: 1.1rem; } }
-  
-    /* ---- TikTok ---- */
-    .tt-placeholder { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 20px; background: #0b0d14; }
-    .tt-placeholder .tt-title { font-weight: 700; font-size: 1.05rem; }
-    .tt-placeholder .tt-note { font-size: 0.78rem; color: var(--text-muted); max-width: 340px; }
-    .tt-placeholder .tt-open { background: #fe2c55; border-color: #fe2c55; color: #fff; font-weight: 700; padding: 10px 18px; }
-    .plat-tag { font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-left: 6px; vertical-align: middle; background: #25f4ee; color: #000; }
-    .plat-select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border, #333); background: #0f111a; color: inherit; font-family: inherit; }
-    .btn-ext { color: inherit; text-decoration: none; font-size: 0.75rem; padding: 2px 8px; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; margin-right: 6px; }
-    .btn-ext:hover { background: rgba(255,255,255,.12); }
   </style>
 </head>
 <body>
@@ -577,32 +459,11 @@
   <!-- Overlay Login -->
   <div class="login-overlay" id="loginOverlay">
     <div class="login-card">
-      <h2>MAAP KETUA, BUAT SAHABAT OPJ AJA</h2>
-      <p>Passwordnyaaaaaa Ketuaaaa???</p>
-      <input type="password" id="passwordInput" placeholder="Langsung Aja Ketua...." onkeydown="if(event.key==='Enter') verifyLogin()" />
-      <button class="login-btn" onclick="verifyLogin()">Masuk Canteeeek</button>
+      <h2>MULTI-STREAM ACCESS</h2>
+      <p>Silakan masukkan password untuk melanjutkan.</p>
+      <input type="password" id="passwordInput" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter') verifyLogin()" />
+      <button class="login-btn" onclick="verifyLogin()">Masuk</button>
       <div class="login-error" id="loginError"></div>
-    </div>
-  </div>
-
-  <!-- Modal Edit YouTuber (admin) -->
-  <div class="login-overlay" id="editOverlay" style="display: none;">
-    <div class="login-card edit-card">
-      <h2 style="margin-bottom: 14px;">Edit Streamer</h2>
-      <label class="f">Nama</label>
-      <input type="text" id="editName" />
-      <label class="f">Platform</label>
-      <select id="editPlatform" class="plat-select"><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select>
-      <label class="f">Handle (@nama) / Link Channel / Link Live</label>
-      <input type="text" id="editHandle" />
-      <label class="f">Link Foto Profil</label>
-      <input type="text" id="editAvatar" />
-      <label class="f">Kelompok (boleh lebih dari satu)</label>
-      <div class="edit-groups" id="editGroups"></div>
-      <div class="edit-actions">
-        <button class="btn" onclick="closeEdit()">Batal</button>
-        <button class="login-btn" onclick="saveEdit()">Simpan</button>
-      </div>
     </div>
   </div>
 
@@ -615,7 +476,7 @@
 
     <!-- Paste Custom Link -->
     <div class="custom-link-container">
-      <input type="text" id="customInput" placeholder="Paste link live YouTube / Video ID / link TikTok (@user)..." />
+      <input type="text" id="customInput" placeholder="Paste link live YouTube / Video ID..." />
       <button class="btn" onclick="handleCustomLink()">+ Add Stream</button>
     </div>
 
@@ -631,33 +492,19 @@
     <aside id="sidebarArea">
       <div class="sidebar-header">
         <span>Streamers</span>
-        <span style="display:flex; gap:6px; align-items:center;">
-          <button class="btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="checkAll()">Check Live</button>
-          <button class="btn sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">▾ Tutup</button>
-        </span>
+        <button class="btn" style="padding: 2px 8px; font-size: 0.7rem;" onclick="checkAllStatus()">Check Live</button>
       </div>
 
-      <div id="tabs" class="tabs"></div>
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Cari nama streamer..." oninput="onSearch(this.value)" autocomplete="off" />
-        <button id="searchClear" onclick="clearSearch()" title="Hapus pencarian">✕</button>
-      </div>
-      <div class="group-actions admin-only">
-        <button class="btn" onclick="addGroup()">+ Grup</button>
-        <button class="btn" onclick="renameGroup()">Ubah Nama</button>
-        <button class="btn btn-danger" onclick="deleteGroup()">Hapus Grup</button>
+      <!-- Form Tambah Permanen (Admin) -->
+      <div class="admin-form" id="adminForm" style="display: none;">
+        <span style="font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);">+ Tambah Streamer Permanen</span>
+        <input type="text" id="newStreamerName" placeholder="Nama Streamer (Contoh: Ncang)" />
+        <input type="text" id="newStreamerHandle" placeholder="Handle (@Ncangpitung) atau Link Live" />
+        <input type="text" id="newStreamerAvatar" placeholder="Link Foto Profil (Opsional)" />
+        <button onclick="addStreamerByAdmin()">Simpan Streamer</button>
       </div>
 
-      <button class="btn-add-toggle admin-only" id="addToggle" onclick="toggleAddForm()">+ Tambah Streamer</button>
-      <div class="admin-form" id="adminForm" style="display: none; margin-top: 10px;">
-        <span id="addTarget" style="font-size: 0.75rem; font-weight: 600; color: var(--accent-gold);"></span>
-        <select id="newStreamerPlatform" class="plat-select"><option value="youtube">YouTube</option><option value="tiktok">TikTok</option></select>
-        <input type="text" id="newStreamerName" placeholder="Nama streamer (opsional)" />
-        <input type="text" id="newStreamerHandle" placeholder="YouTube: @handle / link  |  TikTok: @username / link" onkeydown="if(event.key==='Enter') addStreamer()" />
-        <input type="text" id="newStreamerAvatar" placeholder="Link Foto Profil (opsional)" />
-        <button onclick="addStreamer()">Simpan Streamer</button>
-      </div>
-
+      <!-- Daftar Streamer -->
       <div class="streamer-list" id="streamerList"></div>
 
       <div class="sidebar-footer">
@@ -671,346 +518,111 @@
     </main>
   </div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script>
-    // ====== ISI DENGAN DATA FIREBASE ANDA (Project settings > Your apps > Web app) ======
-    const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyCgxo-FHKdkSqSnjsWCc5jXFchDr5qSW3k",
-      authDomain: "opjstream.firebaseapp.com",
-      projectId: "opjstream",
-      storageBucket: "opjstream.firebasestorage.app",
-      messagingSenderId: "349528754058",
-      appId: "1:349528754058:web:762d22bee3012a88a7aa73"
-    };
-    const ADMIN_EMAIL = "admin@opjstream.com";   // akun admin yang dibuat di Firebase Authentication
-    const MEMBER_PASSWORD = "opjontop";          // password member (hanya bisa menonton)
-    // ===================================================================================
+    const INITIAL_STREAMERS = [
+      { 
+        id: "str_juki", 
+        name: "Juki", 
+        handle: "juki33", 
+        avatar: "https://ui-avatars.com/api/?name=Juki&background=ff334b&color=fff" 
+      },
+      { 
+        id: "str_ncang", 
+        name: "Ncang Pitung", 
+        handle: "Ncangpitung", 
+        avatar: "https://ui-avatars.com/api/?name=Ncang&background=2ecc71&color=fff" 
+      }
+    ];
 
-    firebase.initializeApp(FIREBASE_CONFIG);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    let role = null, started = false, seeded = false, fbErr = "";
-    let groups = [], streamers = [], currentGroup = null, activeStreams = [];
-    // TikTok LIVE Embed Player butuh persetujuan TikTok per domain (developers.tiktok.com).
-    // Sebelum disetujui: biarkan false (stream TikTok dibuka lewat jendela popup).
-    // Setelah domain Anda disetujui: ubah menjadi true.
-    const TIKTOK_EMBED = false;
-    const liveStatus = {}, liveVideo = {}, lastCheck = {}, chanCache = {}, playerLive = {};
-
-    const $ = id => document.getElementById(id);
-    const isAdmin = () => role === "admin";
-    const chanOf = s => s.channelId || chanCache[s.id] || null;
-    let searchQ = "";
-    const gidsOf = s => s.groupIds || (s.group ? [s.group] : []);   // 1 YouTuber bisa di banyak kelompok
-    const avatarFor = n => `https://ui-avatars.com/api/?name=${encodeURIComponent(n)}&background=252836&color=fff`;
-    const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
-    function toggleSidebar() {
-      const aside = $("sidebarArea");
-      const closed = aside.classList.toggle("collapsed");
-      $("sidebarToggle").textContent = closed ? "▴ Buka" : "▾ Tutup";
+    let streamers = [];
+    function loadStreamers() {
+      const saved = localStorage.getItem("multi_streamers_v6");
+      if (saved) {
+        try {
+          streamers = JSON.parse(saved);
+        } catch (e) {
+          streamers = INITIAL_STREAMERS;
+        }
+      } else {
+        streamers = INITIAL_STREAMERS;
+        localStorage.setItem("multi_streamers_v6", JSON.stringify(streamers));
+      }
     }
 
-    // ---------- Login ----------
-    async function verifyLogin() {
-      const pass = $("passwordInput").value.trim();
-      const err = $("loginError");
-      if (!pass) return;
-      if (pass === MEMBER_PASSWORD) {
-        sessionStorage.setItem("user_session_role", "user");
-        enter("user");
+    function saveStreamers() {
+      localStorage.setItem("multi_streamers_v6", JSON.stringify(streamers));
+    }
+
+    let currentUserRole = null;
+    let activeStreams = [];
+    const streamerLiveStatus = {};
+    const streamerCurrentVideoId = {};
+
+    function verifyLogin() {
+      const pass = document.getElementById("passwordInput").value.trim();
+      const err = document.getElementById("loginError");
+
+      if (pass === "opjopjopjterbaik") {
+        currentUserRole = "admin";
+      } else if (pass === "opjopjopjontop") {
+        currentUserRole = "user";
+      } else {
+        err.innerText = "Password salah!";
         return;
       }
-      err.innerText = "Memeriksa...";
-      try {
-        await auth.signInWithEmailAndPassword(ADMIN_EMAIL, pass);
-        enter("admin");
-      } catch (e) {
-        const c = e.code || "";
-        err.innerText = /invalid|wrong-password|user-not-found/.test(c) ? "Password salah!" : "Gagal login: " + (c || e.message);
-      }
+
+      sessionStorage.setItem("user_session_role", currentUserRole);
+      applyLoginState();
     }
 
-    function enter(r) {
-      if (started) return;
-      started = true;
-      role = r;
-      $("loginOverlay").style.display = "none";
-      const badge = $("roleBadge");
-      badge.className = "badge-role " + (isAdmin() ? "role-admin" : "role-user");
-      badge.innerText = isAdmin() ? "Admin" : "Member";
-      document.body.classList.toggle("is-admin", isAdmin());
-      startListeners();
+    function applyLoginState() {
+      document.getElementById("loginOverlay").style.display = "none";
+      const roleBadge = document.getElementById("roleBadge");
+      const adminForm = document.getElementById("adminForm");
+      const sidebarArea = document.getElementById("sidebarArea");
+
+      if (currentUserRole === "admin") {
+        roleBadge.className = "badge-role role-admin";
+        roleBadge.innerText = "Admin";
+        adminForm.style.display = "flex";
+        sidebarArea.classList.add("is-admin");
+      } else {
+        roleBadge.className = "badge-role role-user";
+        roleBadge.innerText = "Member";
+        adminForm.style.display = "none";
+        sidebarArea.classList.remove("is-admin");
+      }
+
+      renderSidebar();
+      checkAllStatus();
     }
 
     function logout() {
       sessionStorage.removeItem("user_session_role");
-      auth.signOut().finally(() => location.reload());
+      window.location.reload();
     }
 
-    auth.onAuthStateChanged(u => {
-      if (started) return;
-      if (u && u.email === ADMIN_EMAIL) enter("admin");
-      else if (sessionStorage.getItem("user_session_role") === "user") enter("user");
-    });
-
-    // ---------- Firebase (sinkron real-time antar device) ----------
-    function startListeners() {
-      db.collection("groups").orderBy("createdAt").onSnapshot(snap => {
-        groups = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        if (!groups.length && isAdmin() && !seeded) { seeded = true; seedData(); return; }
-        if (!groups.some(g => g.id === currentGroup)) currentGroup = groups[0] ? groups[0].id : null;
-        fbErr = "";
-        render();
-      }, e => { fbErr = "Gagal membaca Firebase: " + e.message; render(); });
-
-      db.collection("streamers").orderBy("createdAt").onSnapshot(snap => {
-        streamers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        const before = activeStreams.length;
-        activeStreams = activeStreams.filter(a => a.id.startsWith("custom_") || streamers.some(s => s.id === a.id));
-        streamers.filter(s => !lastCheck[s.id]).forEach(s => {
-          liveStatus[s.id] = "checking";
-          refreshStreamer(s).then(render);
-        });
-        render();
-        if (activeStreams.length !== before) renderGrid();
-      }, e => { fbErr = "Gagal membaca Firebase: " + e.message; render(); });
-    }
-
-    async function seedData() {
-      const t = Date.now();
-      const opj = await db.collection("groups").add({ name: "OPJ", createdAt: t });
-      await db.collection("groups").add({ name: "Nakama", createdAt: t + 1 });
-      const base = { channelId: null, staticVideoId: null, groupIds: [opj.id] };
-      await db.collection("streamers").add({ ...base, name: "Juki", handle: "juki33", avatar: avatarFor("Juki"), createdAt: t });
-      await db.collection("streamers").add({ ...base, name: "Ncang Pitung", handle: "Ncangpitung", avatar: avatarFor("Ncang Pitung"), createdAt: t + 1 });
-    }
-
-    // ---------- Kelompok ----------
-    function onSearch(v) { searchQ = v; $("searchClear").style.display = v ? "block" : "none"; render(); }
-    function clearSearch() { $("searchInput").value = ""; onSearch(""); $("searchInput").focus(); }
-
-    function selectGroup(id) { currentGroup = id; searchQ = ""; $("searchInput").value = ""; $("searchClear").style.display = "none"; $("adminForm").style.display = "none"; render(); }
-
-    async function addGroup() {
-      if (!isAdmin()) return;
-      const name = (prompt("Nama kelompok baru:") || "").trim();
-      if (!name) return;
-      if (groups.some(g => g.name.toLowerCase() === name.toLowerCase())) { alert("Kelompok sudah ada."); return; }
-      try {
-        const ref = await db.collection("groups").add({ name, createdAt: Date.now() });
-        currentGroup = ref.id;
-        render();
-      } catch (e) { alert("Gagal menyimpan: " + e.message); }
-    }
-
-    async function renameGroup() {
-      const g = groups.find(x => x.id === currentGroup);
-      if (!isAdmin() || !g) return;
-      const name = (prompt("Nama baru untuk kelompok:", g.name) || "").trim();
-      if (!name || name === g.name) return;
-      if (groups.some(x => x.id !== g.id && x.name.toLowerCase() === name.toLowerCase())) { alert("Nama kelompok sudah dipakai."); return; }
-      try { await db.collection("groups").doc(g.id).update({ name }); }
-      catch (e) { alert("Gagal mengubah nama: " + e.message); }
-    }
-
-    async function deleteGroup() {
-      if (!isAdmin() || !currentGroup) return;
-      const g = groups.find(x => x.id === currentGroup);
-      const members = streamers.filter(s => gidsOf(s).includes(currentGroup));
-      const only = members.filter(s => gidsOf(s).length === 1);
-      const shared = members.filter(s => gidsOf(s).length > 1);
-      let msg = `Hapus kelompok "${g.name}"?`;
-      if (only.length) msg += `\n${only.length} YouTuber yang hanya ada di kelompok ini ikut terhapus.`;
-      if (shared.length) msg += `\n${shared.length} YouTuber lain tetap ada di kelompoknya yang lain.`;
-      if (!confirm(msg)) return;
-      try {
-        const batch = db.batch();
-        only.forEach(m => batch.delete(db.collection("streamers").doc(m.id)));
-        shared.forEach(m => batch.update(db.collection("streamers").doc(m.id), { groupIds: firebase.firestore.FieldValue.arrayRemove(g.id) }));
-        batch.delete(db.collection("groups").doc(g.id));
-        await batch.commit();
-      } catch (e) { alert("Gagal menghapus: " + e.message); }
-    }
-
-    // ---------- Tambah / hapus YouTuber (admin) ----------
-    function toggleAddForm() {
-      if (!currentGroup) { alert("Buat kelompok dulu dengan tombol + Grup."); return; }
-      const f = $("adminForm");
-      f.style.display = f.style.display === "none" ? "flex" : "none";
-      if (f.style.display === "flex") $("newStreamerHandle").focus();
-    }
-
-    function parseTikTokInput(v) {
-      let m = v.match(/tiktok\.com\/@?([\w.]+)/i);
-      let u = m ? m[1] : v.replace(/^@/, "").split(/[\/?#\s]/)[0];
-      return u.replace(/[^\w.]/g, "");
-    }
-
-    function parseHandleInput(inputVal, platform) {
-      if (platform === "tiktok" || /tiktok\.com/i.test(inputVal)) {
-        return { platform: "tiktok", handle: parseTikTokInput(inputVal), channelId: null, staticVideoId: null };
-      }
-      let handle = "", staticVideoId = null;
-      const vid = extractVideoId(inputVal);
-      if (vid && /youtu\.?be/.test(inputVal)) staticVideoId = vid;
-      const chMatch = inputVal.match(/(UC[a-zA-Z0-9_-]{22})/);
-      const channelId = chMatch ? chMatch[1] : null;
-      if (inputVal.includes("@")) {
-        handle = inputVal.split("@")[1].split(/[\/?#]/)[0];
-      } else if (inputVal.includes("youtube.com/")) {
-        const seg = inputVal.replace(/.*youtube\.com\//, "").split(/[?#]/)[0].split("/");
-        if (seg[0] === "c" || seg[0] === "user") handle = seg[1] || "";
-        else if (!["channel", "watch", "live"].includes(seg[0])) handle = seg[0];
-      } else if (!channelId && !staticVideoId) {
-        handle = inputVal.replace(/\s+/g, "");
-      }
-      return { platform: "youtube", handle, channelId, staticVideoId };
-    }
-
-    // Identitas YouTuber: handle (@username, tanpa @ & huruf besar/kecil) dan channel ID
-    const norm = h => String(h || "").replace(/^@/, "").trim().toLowerCase();
-    const keysOf = s => {
-      const k = [];
-      const pf = s.platform === "tiktok" ? "t:" : "h:";
-      if (s.handle) k.push(pf + norm(s.handle));
-      const c = s.channelId || chanCache[s.id];
-      if (c) k.push("c:" + c);
-      return k;
-    };
-    const groupNames = s => gidsOf(s).map(id => (groups.find(g => g.id === id) || {}).name).filter(Boolean).join(", ");
-
-    function findDuplicate(p, exceptId) {
-      const pk = [];
-      if (p.handle) pk.push((p.platform === "tiktok" ? "t:" : "h:") + norm(p.handle));
-      if (p.channelId) pk.push("c:" + p.channelId);
-      if (!pk.length) return null;
-      return streamers.find(x => x.id !== exceptId && keysOf(x).some(k => pk.includes(k))) || null;
-    }
-
-    // Daftar YouTuber yang sudah terlanjur ganda: { id: [nama lain, ...] }
-    function dupMap() {
-      const m = {};
-      streamers.forEach(a => streamers.forEach(b => {
-        if (a.id !== b.id && keysOf(a).some(k => keysOf(b).includes(k))) (m[a.id] = m[a.id] || []).push(b.name);
-      }));
-      return m;
-    }
-
-    // Sudah ada: kalau belum ada di kelompok ini, tawarkan memasukkannya ke kelompok ini juga
-    async function handleDuplicate(dup) {
-      const cur = groups.find(g => g.id === currentGroup);
-      if (gidsOf(dup).includes(currentGroup)) { alert(`"${dup.name}" sudah ada di kelompok "${cur.name}".`); return; }
-      if (!confirm(`"${dup.name}" sudah terdaftar di kelompok: ${groupNames(dup)}.\nMasukkan juga ke kelompok "${cur.name}"?`)) return;
-      try {
-        await db.collection("streamers").doc(dup.id).update({
-          groupIds: gidsOf(dup).concat(currentGroup),
-          group: firebase.firestore.FieldValue.delete()
-        });
-        ["newStreamerName", "newStreamerHandle", "newStreamerAvatar"].forEach(i => $(i).value = "");
-        $("adminForm").style.display = "none";
-      } catch (e) { alert("Gagal menyimpan: " + e.message); }
-    }
-
-    async function addStreamer() {
-      if (!isAdmin() || !currentGroup) return;
-      let name = $("newStreamerName").value.trim();
-      const inputVal = $("newStreamerHandle").value.trim();
-      if (!inputVal) { alert("Handle / Link channel wajib diisi!"); return; }
-      const p = parseHandleInput(inputVal, $("newStreamerPlatform").value);
-      const dup = findDuplicate(p);
-      if (dup) { await handleDuplicate(dup); return; }
-      if (!name) name = p.handle || p.channelId || "Streamer";
-      const avatar = $("newStreamerAvatar").value.trim() || avatarFor(name);
-      try {
-        await db.collection("streamers").add({ ...p, name, avatar, groupIds: [currentGroup], createdAt: Date.now() });
-        ["newStreamerName", "newStreamerHandle", "newStreamerAvatar"].forEach(i => $(i).value = "");
-        $("adminForm").style.display = "none";
-      } catch (e) { alert("Gagal menyimpan (cek Rules Firestore & login admin): " + e.message); }
-    }
-
-    // ---------- Edit YouTuber: nama, handle, foto, kelompok (pindah / banyak kelompok) ----------
-    let editingId = null;
-
-    function openEdit(id) {
-      const st = streamers.find(s => s.id === id);
-      if (!isAdmin() || !st) return;
-      editingId = id;
-      $("editPlatform").value = st.platform === "tiktok" ? "tiktok" : "youtube";
-      $("editPlatform").dataset.orig = $("editPlatform").value;
-      const shown = st.handle ? "@" + st.handle : (st.channelId || (st.staticVideoId ? "https://youtu.be/" + st.staticVideoId : ""));
-      $("editName").value = st.name;
-      $("editHandle").value = shown;
-      $("editHandle").dataset.orig = shown;
-      $("editAvatar").value = st.avatar || "";
-      const cur = gidsOf(st);
-      $("editGroups").innerHTML = groups.map(g =>
-        `<label><input type="checkbox" value="${g.id}" ${cur.includes(g.id) ? "checked" : ""}> ${esc(g.name)}</label>`).join("");
-      $("editOverlay").style.display = "flex";
-    }
-
-    function closeEdit() { $("editOverlay").style.display = "none"; editingId = null; }
-
-    async function saveEdit() {
-      const st = streamers.find(s => s.id === editingId);
-      if (!isAdmin() || !st) return closeEdit();
-      const name = $("editName").value.trim();
-      if (!name) { alert("Nama tidak boleh kosong!"); return; }
-      const gids = [...document.querySelectorAll("#editGroups input:checked")].map(i => i.value);
-      if (!gids.length) { alert("Pilih minimal satu kelompok!"); return; }
-
-      const data = {
-        name,
-        avatar: $("editAvatar").value.trim() || avatarFor(name),
-        groupIds: gids,
-        group: firebase.firestore.FieldValue.delete()
-      };
-      const input = $("editHandle").value.trim();
-      const platChanged = $("editPlatform").value !== $("editPlatform").dataset.orig;
-      if (input !== $("editHandle").dataset.orig || platChanged) {
-        if (!input) { alert("Handle / Link channel wajib diisi!"); return; }
-        const p = parseHandleInput(input, $("editPlatform").value);
-        const dup = findDuplicate(p, st.id);
-        if (dup) { alert(`"${dup.name}" sudah memakai handle / channel tersebut (kelompok: ${groupNames(dup)}).`); return; }
-        Object.assign(data, p);
-        delete chanCache[st.id];
-        delete liveVideo[st.id];
-        delete lastCheck[st.id];   // paksa cek ulang status live
-      }
-      try {
-        await db.collection("streamers").doc(st.id).update(data);
-        closeEdit();
-      } catch (e) { alert("Gagal menyimpan: " + e.message); }
-    }
-
-    async function deleteStreamer(id, ev) {
-      ev.stopPropagation();
-      if (!isAdmin()) return;
-      const t = streamers.find(s => s.id === id);
-      if (!confirm(`Hapus permanen "${t ? t.name : ""}"${t && gidsOf(t).length > 1 ? " dari SEMUA kelompok" : ""}?`)) return;
-      try { await db.collection("streamers").doc(id).delete(); }
-      catch (e) { alert("Gagal menghapus: " + e.message); }
-    }
-
-    // ---------- Cek status live ----------
+    // Helper fetch dengan timeout 3 detik agar TIDAK STUCK di Checking
     async function fetchWithTimeout(resource, options = {}) {
       const { timeout = 3500 } = options;
-      const ctl = new AbortController();
-      const timer = setTimeout(() => ctl.abort(), timeout);
-      try { return await fetch(resource, { ...options, signal: ctl.signal }); }
-      finally { clearTimeout(timer); }
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      const response = await fetch(resource, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
     }
 
-    const withDeadline = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
+    const streamerLastCheck = {};
 
+    // Fallback bila /api/live tidak tersedia (mis. file dibuka lokal)
     async function fetchLiveViaProxy(handle) {
-      const target = `https://www.youtube.com/@${handle}/live`;
+      const targetUrl = `https://www.youtube.com/@${handle}/live`;
       const proxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(target)}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(target)}`
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
       ];
       for (const proxy of proxies) {
         try {
@@ -1026,202 +638,126 @@
       return null;
     }
 
-    async function fetchLiveInfo(st) {
-      if (st.platform === "tiktok") {
-        try {
-          const resp = await fetchWithTimeout(`/api/live?platform=tiktok&handle=${encodeURIComponent(st.handle)}`, { timeout: 9000 });
-          if (resp.ok) return await resp.json();
-        } catch (e) {}
-        return { platform: "tiktok", isLive: null };
-      }
-      const ch = chanOf(st);
-      if (!st.handle && !ch) return null;
+    async function fetchLiveInfo(streamer) {
+      if (!streamer.handle && !streamer.channelId) return null;
       try {
-        const q = ch ? `channel=${encodeURIComponent(ch)}` : `handle=${encodeURIComponent(st.handle)}`;
-        const resp = await fetchWithTimeout(`/api/live?${q}`, { timeout: 9000 });
+        const q = streamer.channelId
+          ? `channel=${encodeURIComponent(streamer.channelId)}`
+          : `handle=${encodeURIComponent(streamer.handle)}`;
+        const resp = await fetchWithTimeout(`/api/live?${q}`, { timeout: 10000 });
         if (resp.ok) {
           const d = await resp.json();
           if (d && !d.error) return d;
         }
       } catch (e) {}
-      return st.handle ? fetchLiveViaProxy(st.handle) : null;
+      return streamer.handle ? fetchLiveViaProxy(streamer.handle) : null;
     }
 
-    async function refreshStreamer(st) {
-      let data = null;
-      try { data = await withDeadline(fetchLiveInfo(st), 14000); } catch (e) {}
-      lastCheck[st.id] = Date.now();
-      if (st.platform === "tiktok") {
-        // isLive true / false / null (tidak pasti: TikTok tidak punya API status live resmi)
-        liveStatus[st.id] = data && data.isLive === true ? "live" : data && data.isLive === false ? "ready" : "unknown";
-        return;
-      }
-      if (data && data.channelId && !chanOf(st)) {
-        chanCache[st.id] = data.channelId;
-        if (isAdmin()) db.collection("streamers").doc(st.id).update({ channelId: data.channelId }).catch(() => {});
+    async function refreshStreamer(streamer) {
+      const data = await fetchLiveInfo(streamer);
+      streamerLastCheck[streamer.id] = Date.now();
+      if (data && data.channelId && !streamer.channelId) {
+        streamer.channelId = data.channelId;
+        saveStreamers();
       }
       if (data && data.isLive && data.videoId) {
-        liveVideo[st.id] = data.videoId;
-        liveStatus[st.id] = "live";
-      } else if (playerLive[st.id] && Date.now() - playerLive[st.id] < 150000) {
-        liveStatus[st.id] = "live";   // deteksi server gagal, tapi player sedang memutar live
+        streamerCurrentVideoId[streamer.id] = data.videoId;
+        streamerLiveStatus[streamer.id] = "live";
       } else {
-        delete liveVideo[st.id];
-        liveStatus[st.id] = "ready";
+        delete streamerCurrentVideoId[streamer.id];
+        streamerLiveStatus[streamer.id] = "ready";
       }
     }
 
-    async function checkAll(silent) {
-      if (silent !== true) { streamers.forEach(s => liveStatus[s.id] = "checking"); render(); }
-      await Promise.all(streamers.map(async s => { await refreshStreamer(s); render(); }));
-    }
-    // Cek live otomatis berkala DIHAPUS: status hanya dicek saat halaman dibuka/di-refresh
-    // (lihat onSnapshot streamers), atau saat tombol "Check Live" ditekan manual.
-
-    // ---------- Render panel kiri ----------
-    function render() {
-      $("tabs").innerHTML = groups.map(g => {
-        const n = streamers.filter(s => gidsOf(s).includes(g.id) && liveStatus[s.id] === "live").length;
-        return `<button class="tab ${g.id === currentGroup ? "active" : ""}" onclick="selectGroup('${g.id}')">${esc(g.name)}${n ? `<span class="tab-live">${n} LIVE</span>` : ""}</button>`;
-      }).join("");
-
-      const g = groups.find(x => x.id === currentGroup);
-      $("addTarget").innerText = g ? `Tambah ke kelompok: ${g.name}` : "";
-
-      const listEl = $("streamerList");
+    function renderSidebar() {
+      const listEl = document.getElementById("streamerList");
       listEl.innerHTML = "";
-      if (fbErr) { listEl.innerHTML = `<div class="list-empty">${esc(fbErr)}</div>`; return; }
-      if (!groups.length) { listEl.innerHTML = `<div class="list-empty">${isAdmin() ? "Belum ada kelompok. Klik + Grup." : "Belum ada data."}</div>`; return; }
 
-      // Yang sedang LIVE dinaikkan ke paling atas
-      const q = norm(searchQ);
-      const list = streamers.filter(s => q ? (norm(s.name).includes(q) || norm(s.handle).includes(q)) : gidsOf(s).includes(currentGroup)).sort((a, b) =>
-        (liveStatus[b.id] === "live") - (liveStatus[a.id] === "live") || a.createdAt - b.createdAt);
-      if (!list.length) listEl.innerHTML = `<div class="list-empty">${q ? `Tidak ada streamer dengan nama "${esc(searchQ.trim())}".` : "Belum ada streamer di kelompok ini."}</div>`;
-      const dups = isAdmin() ? dupMap() : {};
-      if (Object.keys(dups).length) listEl.insertAdjacentHTML("afterbegin", `<div class="list-empty" style="color: var(--accent-gold); padding: 4px 6px;">⚠ ${Object.keys(dups).length} YouTuber ganda terdeteksi (tanda "Ganda"). Hapus salah satunya.</div>`);
-      if (q) listEl.insertAdjacentHTML("afterbegin", `<div class="list-empty" style="padding: 2px 6px;">Hasil pencarian di semua kelompok</div>`);
+      streamers.forEach(streamer => {
+        const isActive = activeStreams.some(s => s.id === streamer.id);
+        const status = streamerLiveStatus[streamer.id] || "ready";
 
-      list.forEach(st => {
-        const status = liveStatus[st.id] || "checking";
-        const isActive = activeStreams.some(s => s.id === st.id);
         const card = document.createElement("div");
-        card.className = `streamer-item ${status === "live" ? "live" : ""} ${isActive ? "active" : ""}`;
-        card.onclick = () => toggleStreamer(st);
+        card.className = `streamer-item ${isActive ? "active" : ""}`;
 
-        let statusHtml = `<span class="status-dot"></span><span>Offline</span>`;
-        if (status === "live") statusHtml = `<span class="live-pill">LIVE</span><span>Sedang live</span>`;
-        else if (status === "unknown") statusHtml = `<span class="status-dot"></span><span>TikTok · klik = buka live</span>`;
-        else if (status === "checking") statusHtml = `<span class="status-dot"></span><span>Mengecek...</span>`;
+        card.onclick = (e) => {
+          if (e.target.classList.contains("btn-delete-streamer")) return;
+          toggleStreamer(streamer);
+        };
+
+        let statusText = "Ready to Play";
+        let isLiveClass = "";
+        if (status === "live") {
+          statusText = "Live Now";
+          isLiveClass = "live";
+        } else if (status === "checking") {
+          statusText = "Checking...";
+        }
 
         card.innerHTML = `
-          <img src="${esc(st.avatar || avatarFor(st.name))}" alt="${esc(st.name)}" class="streamer-avatar" onerror="this.src='${avatarFor(st.name)}'" />
+          <img src="${streamer.avatar || 'https://via.placeholder.com/40'}" alt="${streamer.name}" class="streamer-avatar" onerror="this.src='https://via.placeholder.com/40'" />
           <div class="streamer-info">
-            <div class="streamer-name">${esc(st.name)}${st.platform === "tiktok" ? '<span class="plat-tag">TikTok</span>' : ""}</div>
-            <div class="streamer-status ${status === "live" ? "live" : ""}">${statusHtml}${q ? `<span class="grp-tag">· ${esc(groupNames(st))}</span>` : ""}${dups[st.id] ? `<span class="dup-tag" title="Sama dengan: ${esc(dups[st.id].join(", "))}">⚠ Ganda</span>` : ""}</div>
+            <div class="streamer-name">${streamer.name}</div>
+            <div class="streamer-status ${isLiveClass}">
+              <span class="status-dot"></span>
+              <span>${statusText}</span>
+            </div>
           </div>
-          ${isAdmin() ? `<button class="btn-edit-streamer" title="Edit Streamer">✎</button><button class="btn-delete-streamer" title="Hapus Streamer">✕</button>` : ""}`;
-        const ed = card.querySelector(".btn-edit-streamer");
-        if (ed) ed.onclick = ev => { ev.stopPropagation(); openEdit(st.id); };
-        const del = card.querySelector(".btn-delete-streamer");
-        if (del) del.onclick = ev => deleteStreamer(st.id, ev);
+          <button class="btn-delete-streamer" title="Hapus Streamer" onclick="deleteStreamerByAdmin('${streamer.id}', event)">✕</button>
+        `;
+
         listEl.appendChild(card);
       });
     }
 
-    // ---------- Grid video (campuran dari kelompok mana pun) ----------
-    // ---------- TikTok: popup yang diposisikan tepat di atas slot grid ----------
-    const ttWins = {};
-    const TT_CHROME = 78;   // perkiraan tinggi title bar + address bar jendela popup (ubah kalau posisinya kurang pas)
+    // Toggle Streamer Grid
+    async function toggleStreamer(streamer) {
+      const existingIdx = activeStreams.findIndex(s => s.id === streamer.id);
 
-    function ttBox(id) {
-      const card = document.querySelector(`.video-card[data-sid="${id}"]`);
-      if (!card) return null;
-      const r = card.getBoundingClientRect();
-      const hdr = card.querySelector(".video-card-header");
-      const hh = hdr ? hdr.getBoundingClientRect().height : 0;
-      const sx = window.screenX ?? window.screenLeft, sy = window.screenY ?? window.screenTop;
-      const side = Math.max(0, (window.outerWidth - window.innerWidth) / 2);
-      const topChrome = Math.max(0, window.outerHeight - window.innerHeight - side);
-      return {
-        left: Math.round(sx + side + r.left),
-        top: Math.round(sy + topChrome + r.top + hh - TT_CHROME),
-        width: Math.max(200, Math.round(r.width)),
-        height: Math.max(200, Math.round(r.height - hh))
-      };
-    }
-
-    // Harus dipanggil langsung dari klik pengguna agar popup tidak diblokir browser
-    function openTikTokFor(id) {
-      const st = activeStreams.find(x => x.id === id);
-      if (!st) return;
-      const b = ttBox(id) || { left: 100, top: 60, width: 460, height: 860 };
-      let w = ttWins[id];
-      if (w && !w.closed) {
-        try { w.moveTo(b.left, b.top); w.resizeTo(b.width, b.height + TT_CHROME); } catch (e) {}
-        w.focus();
-        return;
-      }
-      const url = `https://www.tiktok.com/@${encodeURIComponent(st.handle)}/live`;
-      w = window.open(url, "tt_" + st.handle, `popup=yes,left=${b.left},top=${b.top},width=${b.width},height=${b.height}`);
-      if (!w) { alert("Popup diblokir browser. Izinkan popup untuk situs ini, lalu klik lagi."); return; }
-      ttWins[id] = w;
-    }
-
-    function closeTikTok(id) {
-      const w = ttWins[id];
-      if (w && !w.closed) { try { w.close(); } catch (e) {} }
-      delete ttWins[id];
-    }
-
-    function repositionTikTok() {
-      Object.keys(ttWins).forEach(id => {
-        const w = ttWins[id];
-        if (!w || w.closed) { delete ttWins[id]; return; }
-        const b = ttBox(id);
-        if (!b) return;
-        try { w.moveTo(b.left, b.top); w.resizeTo(b.width, b.height + TT_CHROME); } catch (e) {}
-      });
-    }
-    let ttResizeTimer;
-    window.addEventListener("resize", () => { clearTimeout(ttResizeTimer); ttResizeTimer = setTimeout(repositionTikTok, 250); });
-    window.addEventListener("beforeunload", () => Object.keys(ttWins).forEach(closeTikTok));
-
-    async function toggleStreamer(st) {
-      const idx = activeStreams.findIndex(s => s.id === st.id);
-      if (idx !== -1) { activeStreams.splice(idx, 1); render(); renderGrid(); return; }
-      if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
-
-      if (st.platform === "tiktok") {
-        // Klik nama streamer: slot muncul di grid + popup TikTok otomatis menempel di atas slot itu
-        activeStreams.push({ id: st.id, title: st.name, platform: "tiktok", handle: st.handle });
-        render();
+      if (existingIdx !== -1) {
+        activeStreams.splice(existingIdx, 1);
+        renderSidebar();
         renderGrid();
-        if (!TIKTOK_EMBED) openTikTokFor(st.id);
         return;
       }
 
-      const fresh = lastCheck[st.id] && Date.now() - lastCheck[st.id] < 60000;
-      if (!chanOf(st) && !(fresh && liveVideo[st.id])) {
-        liveStatus[st.id] = "checking";
-        render();
-        await refreshStreamer(st);
-        render();
+      if (activeStreams.length >= 8) {
+        alert("Maksimal 8 stream dalam satu layar!");
+        return;
       }
-      if (activeStreams.some(x => x.id === st.id)) return;
 
-      let videoId = liveVideo[st.id] || null, channelId = null;
-      if (!videoId && chanOf(st)) channelId = chanOf(st);
-      if (!videoId && !channelId) videoId = st.staticVideoId || null;
+      // Cek status live terbaru (cache dianggap valid 60 detik)
+      const fresh = streamerLastCheck[streamer.id] && Date.now() - streamerLastCheck[streamer.id] < 60000;
+      if (!(fresh && streamerCurrentVideoId[streamer.id])) {
+        streamerLiveStatus[streamer.id] = "checking";
+        renderSidebar();
+        await refreshStreamer(streamer);
+        renderSidebar();
+      }
+      if (activeStreams.some(x => x.id === streamer.id)) return;
+
+      let videoId = streamerCurrentVideoId[streamer.id] || null;
+      let channelId = null;
+      // Tidak live: pakai embed channel (otomatis play begitu live), lalu video statis
+      if (!videoId && streamer.channelId) channelId = streamer.channelId;
+      if (!videoId && !channelId) videoId = streamer.staticVideoId || null;
+
       if (!videoId && !channelId) {
-        const input = prompt(`Sistem tidak dapat membaca link live ${st.name} secara otomatis.\nMasukkan link live atau Video ID-nya:`);
+        const input = prompt(`Sistem tidak dapat membaca link live ${streamer.name} secara otomatis.\nMasukkan link live atau Video ID-nya:`);
         if (!input) return;
         videoId = extractVideoId(input);
+        if (videoId) streamerCurrentVideoId[streamer.id] = videoId;
       }
       if (!videoId && !channelId) return;
 
-      activeStreams.push({ id: st.id, title: channelId ? st.name + " (menunggu live)" : st.name, videoId, channelId });
-      render();
+      activeStreams.push({
+        id: streamer.id,
+        title: channelId ? streamer.name + " (menunggu live)" : streamer.name,
+        videoId: videoId,
+        channelId: channelId
+      });
+
+      renderSidebar();
       renderGrid();
     }
 
@@ -1229,12 +765,13 @@
       if (!input) return null;
       const str = input.trim();
       if (/^[a-zA-Z0-9_-]{11}$/.test(str)) return str;
+
       try {
         const url = new URL(str);
         if (url.hostname.includes("youtube.com")) {
           if (url.searchParams.has("v")) return url.searchParams.get("v");
-          if (url.pathname.includes("/live/")) return url.pathname.split("/live/")[1].split("/")[0];
-          if (url.pathname.includes("/embed/")) return url.pathname.split("/embed/")[1].split("/")[0];
+          if (url.pathname.includes("/live/")) return url.pathname.split("/live/")[1].split("/")[0].split("?")[0];
+          if (url.pathname.includes("/embed/")) return url.pathname.split("/embed/")[1].split("/")[0].split("?")[0];
         } else if (url.hostname === "youtu.be") {
           return url.pathname.slice(1).split("?")[0];
         }
@@ -1242,182 +779,171 @@
       return null;
     }
 
-    function handleCustomLink() {
-      const input = $("customInput");
-      const val = input.value.trim();
-      if (!val) return;
-      if (activeStreams.length >= 8) { alert("Maksimal 8 stream dalam satu layar!"); return; }
-      if (/tiktok\.com/i.test(val)) {
-        const u = parseTikTokInput(val);
-        if (!u) { alert("Link TikTok tidak dikenali! Contoh: https://www.tiktok.com/@username/live"); return; }
-        const ttId = "custom_tt_" + Date.now();
-        activeStreams.push({ id: ttId, title: "TikTok @" + u, platform: "tiktok", handle: u });
-        input.value = "";
-        render();
-        renderGrid();
-        if (!TIKTOK_EMBED) openTikTokFor(ttId);
+    function addStreamerByAdmin() {
+      if (currentUserRole !== "admin") return;
+
+      const nameInput = document.getElementById("newStreamerName");
+      const handleInput = document.getElementById("newStreamerHandle");
+      const avatarInput = document.getElementById("newStreamerAvatar");
+
+      const name = nameInput.value.trim();
+      let inputVal = handleInput.value.trim();
+
+      if (!name || !inputVal) {
+        alert("Nama dan Handle / Link wajib diisi!");
         return;
       }
+
+      let handle = "";
+      let staticVideoId = null;
+
+      // Cek apakah admin memasukkan link video langsung
+      const potentialVid = extractVideoId(inputVal);
+      if (potentialVid) {
+        staticVideoId = potentialVid;
+      }
+
+      const chMatch = inputVal.match(/(UC[a-zA-Z0-9_-]{22})/);
+      const channelId = chMatch ? chMatch[1] : null;
+
+      if (inputVal.includes("@")) {
+        handle = inputVal.split("@")[1].split("/")[0].split("?")[0];
+      } else if (inputVal.includes("youtube.com/")) {
+        handle = inputVal.replace(/.*youtube\.com\//, "").split("/")[0];
+      } else {
+        handle = inputVal;
+      }
+      if (channelId || (staticVideoId && !inputVal.includes("@"))) handle = "";
+
+      const avatar = avatarInput.value.trim() || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=252836&color=fff`;
+
+      const newId = "str_" + Date.now();
+      streamers.push({
+        id: newId,
+        name: name,
+        handle: handle,
+        channelId: channelId,
+        staticVideoId: staticVideoId,
+        avatar: avatar
+      });
+
+      saveStreamers();
+      nameInput.value = "";
+      handleInput.value = "";
+      avatarInput.value = "";
+
+      renderSidebar();
+      checkAllStatus();
+      alert(`Streamer ${name} berhasil disimpan permanen!`);
+    }
+
+    function deleteStreamerByAdmin(streamerId, event) {
+      event.stopPropagation();
+      if (currentUserRole !== "admin") return;
+
+      const target = streamers.find(s => s.id === streamerId);
+      if (!confirm(`Hapus permanen streamer "${target?.name}"?`)) return;
+
+      streamers = streamers.filter(s => s.id !== streamerId);
+      saveStreamers();
+      removeStream(streamerId);
+      renderSidebar();
+    }
+
+    function handleCustomLink() {
+      const input = document.getElementById("customInput");
+      const val = input.value.trim();
+      if (!val) return;
+
+      if (activeStreams.length >= 8) {
+        alert("Maksimal 8 stream dalam satu layar!");
+        return;
+      }
+
       const videoId = extractVideoId(val);
-      if (!videoId) { alert("Link tidak dikenali! Masukkan link live YouTube / TikTok yang valid."); return; }
-      activeStreams.push({ id: "custom_" + Date.now(), title: "Live Stream (" + (activeStreams.length + 1) + ")", videoId });
+      if (!videoId) {
+        alert("Link tidak dikenali! Masukkan link live YouTube yang valid.");
+        return;
+      }
+
+      activeStreams.push({
+        id: "custom_" + Date.now(),
+        title: "Live Stream (" + (activeStreams.length + 1) + ")",
+        videoId: videoId
+      });
+
       input.value = "";
-      render();
+      renderSidebar();
       renderGrid();
     }
 
-    function removeStream(id) { activeStreams = activeStreams.filter(s => s.id !== id); render(); renderGrid(); }
-    function clearAllStreams() { activeStreams = []; render(); renderGrid(); }
+    function removeStream(id) {
+      activeStreams = activeStreams.filter(s => s.id !== id);
+      renderSidebar();
+      renderGrid();
+    }
 
-    // ---------- Grid video + pemantau otomatis (auto-recover) ----------
-    const players = {}, recoverAt = {}, ytQueue = [];
-    window.onYouTubeIframeAPIReady = () => ytQueue.splice(0).forEach(f => f());
-    (() => { const t = document.createElement("script"); t.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(t); })();
+    function clearAllStreams() {
+      activeStreams = [];
+      renderSidebar();
+      renderGrid();
+    }
 
     function renderGrid() {
-      const grid = $("gridContainer");
+      const grid = document.getElementById("gridContainer");
       const count = activeStreams.length;
+
       grid.className = `grid-${count}`;
+
       if (count === 0) {
-        Object.keys(players).forEach(k => delete players[k]);
-        Object.keys(ttWins).forEach(closeTikTok);
         grid.innerHTML = `<div>Pilih YouTuber di panel kiri atau paste link live di bagian atas.</div>`;
         return;
       }
-      // Hapus kartu yang sudah tidak aktif; kartu lain TIDAK dimuat ulang
-      [...grid.children].forEach(c => {
-        if (!c.dataset.sid || !activeStreams.some(s => s.id === c.dataset.sid)) {
-          if (c.dataset.sid) { delete players[c.dataset.sid]; closeTikTok(c.dataset.sid); }
-          c.remove();
-        }
-      });
+
+      grid.innerHTML = "";
       activeStreams.forEach(stream => {
-        if (grid.querySelector(`[data-sid="${stream.id}"]`)) return;
+        const embedUrl = stream.videoId
+          ? `https://www.youtube-nocookie.com/embed/${stream.videoId}?autoplay=1&mute=1&playsinline=1`
+          : `https://www.youtube-nocookie.com/embed/live_stream?channel=${stream.channelId}&autoplay=1&mute=1&playsinline=1`;
         const card = document.createElement("div");
         card.className = "video-card";
-        card.dataset.sid = stream.id;
         card.innerHTML = `
           <div class="video-card-header">
-            <span class="video-title">${esc(stream.title)}</span>
-            ${stream.platform === "tiktok" ? `<a class="btn-ext" href="https://www.tiktok.com/@${encodeURIComponent(stream.handle)}/live" target="_blank" rel="noopener" title="Buka di TikTok">TikTok ↗</a>` : ""}
+            <span class="video-title">${stream.title}</span>
             <button class="btn-close" onclick="removeStream('${stream.id}')" title="Close">✕</button>
-          </div>`;
+          </div>
+          <iframe 
+            src="${embedUrl}" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            referrerpolicy="strict-origin-when-cross-origin"
+            allowfullscreen>
+          </iframe>
+        `;
         grid.appendChild(card);
-        mountCard(stream.id);
       });
-      setTimeout(repositionTikTok, 80);
     }
 
-    function mountCard(id) {
-      const s = activeStreams.find(x => x.id === id);
-      const card = document.querySelector(`.video-card[data-sid="${id}"]`);
-      if (!s || !card) return;
-      const old = card.querySelector("iframe, .tt-placeholder");
-      if (old) old.remove();
-      if (s.platform === "tiktok") {
-        const url = `https://www.tiktok.com/@${encodeURIComponent(s.handle)}/live`;
-        if (!TIKTOK_EMBED && !s.tryEmbed) {
-          const box = document.createElement("div");
-          box.className = "tt-placeholder";
-          box.innerHTML = `<div class="tt-title">@${esc(s.handle)} · TikTok LIVE</div>
-            <div class="tt-note">Live TikTok tampil di jendela popup yang menempel di slot ini. Kalau popup tertutup atau bergeser, klik tombol di bawah.</div>
-            <button class="btn tt-open">▶ Buka / posisikan popup</button>
-            <button class="btn tt-try">Coba embed</button>`;
-          box.querySelector(".tt-open").onclick = () => openTikTokFor(id);
-          box.querySelector(".tt-try").onclick = () => { s.tryEmbed = true; closeTikTok(id); mountCard(id); };
-          card.appendChild(box);
-          return;
-        }
-        const tt = document.createElement("iframe");
-        tt.src = `https://www.tiktok.com/embed/live/@${encodeURIComponent(s.handle)}?autoplay=1&muted=1&controls=1&embed_domain=${encodeURIComponent(location.hostname)}`;
-        tt.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
-        tt.referrerPolicy = "strict-origin-when-cross-origin";
-        tt.allowFullscreen = true;
-        card.appendChild(tt);
-        return;   // TikTok tidak memakai YT.Player / auto-recover
+    // Cek semua streamer sekaligus (paralel)
+    async function checkAllStatus(silent) {
+      if (silent !== true) {
+        streamers.forEach(st => { streamerLiveStatus[st.id] = "checking"; });
+        renderSidebar();
       }
-      const base = s.videoId
-        ? `https://www.youtube.com/embed/${s.videoId}?`
-        : `https://www.youtube.com/embed/live_stream?channel=${s.channelId}&`;
-      const iframe = document.createElement("iframe");
-      iframe.src = base + `autoplay=1&mute=1&playsinline=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`;
-      iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture";
-      iframe.referrerPolicy = "strict-origin-when-cross-origin";
-      iframe.allowFullscreen = true;
-      card.appendChild(iframe);
-      const title = card.querySelector(".video-title");
-      if (title) title.textContent = s.title;
-
-      const attach = () => {
-        const rec = { player: null, lastTime: -1, bad: 0, recovering: false };
-        players[id] = rec;
-        rec.player = new YT.Player(iframe, { events: {
-          onReady: e => { if (s.unmuted) { try { e.target.unMute(); } catch (_) {} } },
-          onStateChange: e => { if (e.data === 0) recover(id); else if (e.data === 1) confirmLive(id, e.target); },
-          onError: () => recover(id)
-        }});
-      };
-      if (window.YT && YT.Player) attach(); else ytQueue.push(attach);
-    }
-
-    // Player YouTube tahu kalau videonya live: pakai itu untuk membetulkan status di panel kiri
-    function confirmLive(id, player) {
-      const st = streamers.find(x => x.id === id);
-      if (!st || st.platform === "tiktok") return;
-      let vd;
-      try { vd = player.getVideoData(); } catch (_) { return; }
-      let dur = -1;
-      try { dur = player.getDuration(); } catch (_) {}
-      // video live: isLive true, atau durasi 0 saat sedang diputar
-      if (!vd || !(vd.isLive || dur === 0)) return;
-      playerLive[id] = Date.now();
-      if (liveStatus[id] !== "live" || (vd.video_id && liveVideo[id] !== vd.video_id)) {
-        liveStatus[id] = "live";
-        if (vd.video_id) liveVideo[id] = vd.video_id;
-        const s = activeStreams.find(x => x.id === id);
-        if (s) {
-          s.title = st.name;
-          const t = document.querySelector(`.video-card[data-sid="${id}"] .video-title`);
-          if (t) t.textContent = st.name;
-        }
-        render();
-      }
-    }
-
-    // Kalau player berhenti / error / macet, muat ulang otomatis dengan status live terbaru
-    async function recover(id) {
-      const rec = players[id], s = activeStreams.find(x => x.id === id);
-      if (!rec || !s || rec.recovering || Date.now() - (recoverAt[id] || 0) < 20000) return;
-      if (id.startsWith("custom_") && (s.retries = (s.retries || 0) + 1) > 5) return;
-      rec.recovering = true;
-      recoverAt[id] = Date.now();
-      try { s.unmuted = !rec.player.isMuted(); } catch (_) {}
-      const st = streamers.find(x => x.id === id);
-      if (st) {
+      await Promise.all(streamers.map(async st => {
         await refreshStreamer(st);
-        render();
-        if (liveVideo[id]) { s.videoId = liveVideo[id]; s.channelId = null; s.title = st.name; }
-        else if (chanOf(st)) {
-          if (!s.videoId) { rec.recovering = false; return; }   // memang belum live: jangan reload terus
-          s.videoId = null; s.channelId = chanOf(st); s.title = st.name + " (menunggu live)";
-        }
-      }
-      if (activeStreams.some(x => x.id === id)) mountCard(id);
+        renderSidebar();
+      }));
     }
 
-    setInterval(() => {
-      activeStreams.forEach(s => {
-        const rec = players[s.id];
-        if (!rec || !rec.player || !rec.player.getPlayerState) return;
-        let state, t;
-        try { state = rec.player.getPlayerState(); t = rec.player.getCurrentTime(); } catch (e) { return; }
-        const stuck = state === 0 || state === -1 || state === 3 || (state === 1 && Math.abs(t - rec.lastTime) < 0.5);
-        rec.lastTime = t;
-        if (state === 1) confirmLive(s.id, rec.player);
-        rec.bad = stuck ? rec.bad + 1 : 0;
-        if (rec.bad >= 3) recover(s.id);
-      });
-    }, 15000);
+    // Refresh status otomatis tiap 2 menit
+    setInterval(() => { if (currentUserRole) checkAllStatus(true); }, 120000);
+
+    loadStreamers();
+    const existingSession = sessionStorage.getItem("user_session_role");
+    if (existingSession === "admin" || existingSession === "user") {
+      currentUserRole = existingSession;
+      applyLoginState();
+    }
   </script>
 </body>
 </html>
